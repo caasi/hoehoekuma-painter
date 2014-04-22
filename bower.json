@@ -1,7 +1,7 @@
 {
-  "name": "jsl-seed",
+  "name": "hoehoekuma-painter",
   "version": "0.0.1",
-  "homepage": "https://github.com/caasi/jsl-seed",
+  "homepage": "https://github.com/caasi/hoehoekuma-painter",
   "authors": [
     "caasi Huang <caasi.igd@gmail.com>"
   ],
@@ -20,5 +20,10 @@
   "dependencies": {
     "jquery": "~2.1.0",
     "semantic-ui": "~0.15.5"
+  },
+  "overrides": {
+    "semantic-ui": {
+      "main": "build/packaged/**/*"
+    }
   }
 }
