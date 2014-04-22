@@ -168,11 +168,14 @@
       x$.putImageData(imageData, 0, 0);
       x$.save();
       x$.globalCompositeOperation = 'destination-in';
+      x$.fillStyle = 'black';
       x$.beginPath();
-      x$.arc(center.x, center.y, (this.radius.outer + this.radius.inner) / 2, 0, Math.PI * 2);
-      x$.lineStyle = 'black';
-      x$.lineWidth = this.radius.outer - this.radius.inner;
-      x$.stroke();
+      x$.arc(center.x, center.y, this.radius.outer, 0, Math.PI * 2);
+      x$.fill();
+      x$.globalCompositeOperation = 'destination-out';
+      x$.beginPath();
+      x$.arc(center.x, center.y, this.radius.inner, 0, Math.PI * 2);
+      x$.fill();
       x$.restore();
       r = -Math.PI / 2;
       ctx.beginPath();

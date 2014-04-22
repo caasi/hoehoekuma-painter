@@ -113,19 +113,31 @@ class ColorpickerView extends View
       image-data.data[i * 4 + 1] = ~~rgb.1
       image-data.data[i * 4 + 2] = ~~rgb.2
       image-data.data[i * 4 + 3] = 0xff
+    ##
     # mask it to a ring
+    ##
+    # When stroking in Chrone,
+    # globalCompositeOperation will not work properly.
+    # please check:
+    #   http://code.google.com/p/chromium/issues/detail?id=351178
     ctx
       ..putImageData image-data, 0, 0
       ..save!
       ..globalCompositeOperation = \destination-in
+      ..fillStyle = \black
       ..beginPath!
       ..arc do
         center.x, center.y,
-        (@radius.outer + @radius.inner) / 2,
+        @radius.outer,
         0, Math.PI * 2
-      ..lineStyle = \black
-      ..lineWidth = @radius.outer - @radius.inner
-      ..stroke!
+      ..fill!
+      ..globalCompositeOperation = \destination-out
+      ..beginPath!
+      ..arc do
+        center.x, center.y,
+        @radius.inner,
+        0, Math.PI * 2
+      ..fill!
       ..restore!
     # draw triangle
     r = -Math.PI / 2
