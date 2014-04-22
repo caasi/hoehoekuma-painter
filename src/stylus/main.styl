@@ -1,3 +1,28 @@
 @import 'nib'
 
 global-reset()
+
+s-width = 24px
+s-height = 32px
+
+#container
+  position relative
+  width  23 * s-width
+  height 18 * s-height
+  margin 0 auto
+  #selector
+    position absolute
+    top 0
+    left 0
+  #painter
+    position absolute
+    top s-height
+    left 0
+  #previewer
+    position absolute
+    top 0
+    right 0
+  #colorpicker
+    position absolute
+    top 6 * s-height
+    right 0

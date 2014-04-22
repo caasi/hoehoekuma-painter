@@ -89,3 +89,29 @@ td {
 a img {
   border: none;
 }
+#container {
+  position: relative;
+  width: 552px;
+  height: 576px;
+  margin: 0 auto;
+}
+#container #selector {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+#container #painter {
+  position: absolute;
+  top: 32px;
+  left: 0;
+}
+#container #previewer {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+#container #colorpicker {
+  position: absolute;
+  top: 192px;
+  right: 0;
+}
