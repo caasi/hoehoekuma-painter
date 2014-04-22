@@ -1,5 +1,23 @@
 console.log data
 
+##
+# RGB from HSV
+# http://aventures-logicielles.blogspot.tw/2010/11/playing-with-hsv-colors-and-html5.html
+rgb-from-hsv = (h, s, v) ->
+  h = (h + 360) % 360
+  c = v * s
+  h /= 60
+  x = c * (1 - Math.abs((h % 2) - 1))
+  m = v - c
+  rgb = switch
+  | h <  1 => [c, x, 0]
+  | h <  2 => [x, c, 0]
+  | h <  3 => [0, c, x]
+  | h <  4 => [0, x, c]
+  | h <  5 => [x, 0, c]
+  | h <= 6 => [c, 0, x]
+  for v in rgb => 0xff * (v + m)
+
 class ImageLoader
   (@paths) ->
     @images = {}
@@ -77,23 +95,51 @@ class ColorpickerView extends View
       ..width = @data.sprite.width * 6
       ..height = @data.sprite.height * 6
   update: ->
-    x = @domElement.width / 2
-    y = @domElement.height / 2
+    center =
+      x: @domElement.width / 2
+      y: @domElement.height / 2
     ctx = super!
+    # draw HSV gradient
+    image-data = ctx.getImageData do
+      0, 0
+      @domElement.width, @domElement.height
+    for i from 0 til @domElement.width * @domElement.height
+      x = ~~(i % @domElement.width)
+      y = ~~(i / @domElement.width)
+      rad = Math.atan2 y - center.y, x - center.x
+      deg = rad * 180 / Math.PI + 90
+      rgb   = rgb-from-hsv deg, 1, 1
+      image-data.data[i * 4 + 0] = ~~rgb.0
+      image-data.data[i * 4 + 1] = ~~rgb.1
+      image-data.data[i * 4 + 2] = ~~rgb.2
+      image-data.data[i * 4 + 3] = 0xff
+    # mask it to a ring
+    ctx
+      ..putImageData image-data, 0, 0
+      ..save!
+      ..globalCompositeOperation = \destination-in
       ..beginPath!
-      ..arc x, y, (@radius.outer + @radius.inner) / 2, 0, Math.PI * 2, false
+      ..arc do
+        center.x, center.y,
+        (@radius.outer + @radius.inner) / 2,
+        0, Math.PI * 2
+      ..lineStyle = \black
       ..lineWidth = @radius.outer - @radius.inner
       ..stroke!
+      ..restore!
+    # draw triangle
     r = -Math.PI / 2
     ctx.beginPath!
-    ctx.moveTo x + Math.cos(r) * @radius.inner, y + Math.sin(r) * @radius.inner
+    ctx.moveTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
     r += Math.PI * 2 / 3
-    ctx.lineTo x + Math.cos(r) * @radius.inner, y + Math.sin(r) * @radius.inner
+    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
     r += Math.PI * 2 / 3
-    ctx.lineTo x + Math.cos(r) * @radius.inner, y + Math.sin(r) * @radius.inner
+    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
     r += Math.PI * 2 / 3
-    ctx.lineTo x + Math.cos(r) * @radius.inner, y + Math.sin(r) * @radius.inner
-    ctx.fill!
+    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
+    ctx
+      ..fillStyle = \red
+      ..fill!
 
 # main
 views = []

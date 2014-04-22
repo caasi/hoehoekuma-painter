@@ -1,5 +1,5 @@
 (function(){
-  var data, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, ColorpickerView, views, selector, painter, preview, colorpicker;
+  var data, rgbFromHsv, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, ColorpickerView, views, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
     mask: void 8,
@@ -10,6 +10,35 @@
     relations: [void 8, void 8, void 8, 1, void 8, void 8, void 8, 5, void 8, void 8, void 8, 9, void 8, void 8, void 8, 13, void 8]
   };
   console.log(data);
+  rgbFromHsv = function(h, s, v){
+    var c, x, m, rgb, i$, len$, results$ = [];
+    h = (h + 360) % 360;
+    c = v * s;
+    h /= 60;
+    x = c * (1 - Math.abs(h % 2 - 1));
+    m = v - c;
+    rgb = (function(){
+      switch (false) {
+      case !(h < 1):
+        return [c, x, 0];
+      case !(h < 2):
+        return [x, c, 0];
+      case !(h < 3):
+        return [0, c, x];
+      case !(h < 4):
+        return [0, x, c];
+      case !(h < 5):
+        return [x, 0, c];
+      case !(h <= 6):
+        return [c, 0, x];
+      }
+    }());
+    for (i$ = 0, len$ = rgb.length; i$ < len$; ++i$) {
+      v = rgb[i$];
+      results$.push(0xff * (v + m));
+    }
+    return results$;
+  };
   ImageLoader = (function(){
     ImageLoader.displayName = 'ImageLoader';
     var prototype = ImageLoader.prototype, constructor = ImageLoader;
@@ -116,24 +145,48 @@
       x$.height = this.data.sprite.height * 6;
     }
     prototype.update = function(){
-      var x, y, x$, ctx, r;
-      x = this.domElement.width / 2;
-      y = this.domElement.height / 2;
-      x$ = ctx = superclass.prototype.update.call(this);
+      var center, ctx, imageData, i$, to$, i, x, y, rad, deg, rgb, x$, r, y$;
+      center = {
+        x: this.domElement.width / 2,
+        y: this.domElement.height / 2
+      };
+      ctx = superclass.prototype.update.call(this);
+      imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
+      for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
+        i = i$;
+        x = ~~(i % this.domElement.width);
+        y = ~~(i / this.domElement.width);
+        rad = Math.atan2(y - center.y, x - center.x);
+        deg = rad * 180 / Math.PI + 90;
+        rgb = rgbFromHsv(deg, 1, 1);
+        imageData.data[i * 4 + 0] = ~~rgb[0];
+        imageData.data[i * 4 + 1] = ~~rgb[1];
+        imageData.data[i * 4 + 2] = ~~rgb[2];
+        imageData.data[i * 4 + 3] = 0xff;
+      }
+      x$ = ctx;
+      x$.putImageData(imageData, 0, 0);
+      x$.save();
+      x$.globalCompositeOperation = 'destination-in';
       x$.beginPath();
-      x$.arc(x, y, (this.radius.outer + this.radius.inner) / 2, 0, Math.PI * 2, false);
+      x$.arc(center.x, center.y, (this.radius.outer + this.radius.inner) / 2, 0, Math.PI * 2);
+      x$.lineStyle = 'black';
       x$.lineWidth = this.radius.outer - this.radius.inner;
       x$.stroke();
+      x$.restore();
       r = -Math.PI / 2;
       ctx.beginPath();
-      ctx.moveTo(x + Math.cos(r) * this.radius.inner, y + Math.sin(r) * this.radius.inner);
+      ctx.moveTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
       r += Math.PI * 2 / 3;
-      ctx.lineTo(x + Math.cos(r) * this.radius.inner, y + Math.sin(r) * this.radius.inner);
+      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
       r += Math.PI * 2 / 3;
-      ctx.lineTo(x + Math.cos(r) * this.radius.inner, y + Math.sin(r) * this.radius.inner);
+      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
       r += Math.PI * 2 / 3;
-      ctx.lineTo(x + Math.cos(r) * this.radius.inner, y + Math.sin(r) * this.radius.inner);
-      return ctx.fill();
+      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
+      y$ = ctx;
+      y$.fillStyle = 'red';
+      y$.fill();
+      return y$;
     };
     return ColorpickerView;
   }(View));
