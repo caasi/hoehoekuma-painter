@@ -9,7 +9,6 @@
     },
     relations: [void 8, void 8, void 8, 1, void 8, void 8, void 8, 5, void 8, void 8, void 8, 9, void 8, void 8, void 8, 13, void 8]
   };
-  console.log(data);
   rgbFromHsv = function(h, s, v){
     var c, x, m, rgb, i$, len$, results$ = [];
     h = (h + 360) % 360;
@@ -188,31 +187,69 @@
   HSVTriangle = (function(){
     HSVTriangle.displayName = 'HSVTriangle';
     var prototype = HSVTriangle.prototype, constructor = HSVTriangle;
-    function HSVTriangle(radius, rotation){
+    function HSVTriangle(radius){
       this.radius = radius;
-      this.rotation = rotation != null
-        ? rotation
-        : Math.PI / 2;
       this.hue = 0;
       this.domElement = document.createElement('canvas');
     }
     prototype.paint = function(){
-      var ctx, r, step, x$, i$, i, y$;
+      var x$, r, saturation, value, ctx, imageData, i$, to$, i, x, y, delta, rad, s, v, rgb, step, y$, z$;
+      x$ = this.domElement;
+      x$.width = 2 * this.radius;
+      x$.height = 2 * this.radius;
+      r = Math.PI * 5 / 6;
+      saturation = {
+        x: this.radius + this.radius * Math.cos(r),
+        y: this.radius + this.radius * Math.sin(r)
+      };
+      r = Math.PI / 6;
+      value = {
+        x: this.radius + this.radius * Math.cos(r),
+        y: this.radius + this.radius * Math.sin(r)
+      };
       ctx = this.domElement.getContext('2d');
-      r = -this.rotation;
+      imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
+      for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
+        i = i$;
+        x = ~~(i % this.domElement.width);
+        y = ~~(i / this.domElement.width);
+        r = Math.PI / 3;
+        delta = {
+          x: x - saturation.x,
+          y: saturation.y - y
+        };
+        rad = Math.atan2(delta.y, delta.x);
+        s = rad / r;
+        delta = {
+          x: value.x - x,
+          y: value.y - y
+        };
+        rad = Math.atan2(delta.y, delta.x);
+        v = rad / r;
+        rgb = rgbFromHsv(this.hue, s, v);
+        imageData.data[i * 4 + 0] = ~~rgb[0];
+        imageData.data[i * 4 + 1] = ~~rgb[1];
+        imageData.data[i * 4 + 2] = ~~rgb[2];
+        imageData.data[i * 4 + 3] = 0xff;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      r = -Math.PI / 2;
       step = Math.PI * 2 / 3;
-      x$ = ctx;
-      x$.beginPath();
-      x$.moveTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
+      y$ = ctx;
+      y$.beginPath();
+      y$.moveTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
       for (i$ = 0; i$ < 3; ++i$) {
         i = i$;
         ctx.lineTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
         r += step;
       }
-      y$ = ctx;
-      y$.fillStyle = stringFromRgb(rgbFromHsv(this.hue, 1, 1));
-      y$.fill();
-      return y$;
+      z$ = ctx;
+      z$.save();
+      z$.globalCompositeOperation = 'destination-in';
+      z$.fillStyle = 'black';
+      z$.fill();
+      z$.restore();
+      return z$;
     };
     return HSVTriangle;
   }());

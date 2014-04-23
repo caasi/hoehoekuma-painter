@@ -1,5 +1,3 @@
-console.log data
-
 ##
 # RGB from HSV
 # http://aventures-logicielles.blogspot.tw/2010/11/playing-with-hsv-colors-and-html5.html
@@ -140,12 +138,46 @@ class HueRing
       ..restore!
 
 class HSVTriangle
-  (@radius, @rotation = Math.PI / 2) ->
+  (@radius) ->
     @hue = 0
     @domElement = document.createElement \canvas
   paint: ->
+    @domElement
+      ..width = 2 * @radius
+      ..height = 2 * @radius
+    r = Math.PI * 5 / 6
+    saturation =
+      x: @radius + @radius * Math.cos r
+      y: @radius + @radius * Math.sin r
+    r = Math.PI / 6
+    value =
+      x: @radius + @radius * Math.cos r
+      y: @radius + @radius * Math.sin r
     ctx = @domElement.getContext \2d
-    r = -@rotation
+    image-data = ctx.getImageData do
+      0, 0
+      @domElement.width, @domElement.height
+    for i from 0 til @domElement.width * @domElement.height
+      x = ~~(i % @domElement.width)
+      y = ~~(i / @domElement.width)
+      r = Math.PI / 3
+      delta =
+        x: x - saturation.x
+        y: saturation.y - y
+      rad = Math.atan2 delta.y, delta.x
+      s = rad / r
+      delta =
+        x: value.x - x
+        y: value.y - y
+      rad = Math.atan2 delta.y, delta.x
+      v = rad / r
+      rgb = rgb-from-hsv @hue, s, v
+      image-data.data[i * 4 + 0] = ~~rgb.0
+      image-data.data[i * 4 + 1] = ~~rgb.1
+      image-data.data[i * 4 + 2] = ~~rgb.2
+      image-data.data[i * 4 + 3] = 0xff
+    ctx.putImageData image-data, 0, 0
+    r = - Math.PI / 2
     step = Math.PI * 2 / 3
     ctx
       ..beginPath!
@@ -154,8 +186,11 @@ class HSVTriangle
       ctx.lineTo @radius + Math.cos(r) * @radius, @radius + Math.sin(r) * @radius
       r += step
     ctx
-      ..fillStyle = string-from-rgb rgb-from-hsv @hue, 1, 1
+      ..save!
+      ..globalCompositeOperation = \destination-in
+      ..fillStyle = \black
       ..fill!
+      ..restore!
 
 class ColorpickerView extends View
   (data) ->
