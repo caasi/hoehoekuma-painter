@@ -18,6 +18,8 @@ rgb-from-hsv = (h, s, v) ->
   | h <= 6 => [c, 0, x]
   for v in rgb => 0xff * (v + m)
 
+string-from-rgb = -> "rgb(#{~~it.0},#{~~it.1},#{~~it.2})"
+
 class ImageLoader
   (@paths) ->
     @images = {}
@@ -86,7 +88,7 @@ class PreviewView extends View
       @data.sprite.width * 6, @data.sprite.height * 6
 
 class HueRing
-  (@outer-radius, @inner-radius, @offset = 90) ->
+  (@outer-radius, @inner-radius, @rotation = Math.PI / 2) ->
     @domElement = document.createElement \canvas
   paint: ->
     @domElement
@@ -103,8 +105,8 @@ class HueRing
     for i from 0 til @domElement.width * @domElement.height
       x = ~~(i % @domElement.width)
       y = ~~(i / @domElement.width)
-      rad = Math.atan2 y - center.y, x - center.x
-      deg = rad * 180 / Math.PI + @offset
+      rad = @rotation + Math.atan2 y - center.y, x - center.x
+      deg = rad * 180 / Math.PI
       rgb   = rgb-from-hsv deg, 1, 1
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
@@ -137,6 +139,24 @@ class HueRing
       ..fill!
       ..restore!
 
+class HSVTriangle
+  (@radius, @rotation = Math.PI / 2) ->
+    @hue = 0
+    @domElement = document.createElement \canvas
+  paint: ->
+    ctx = @domElement.getContext \2d
+    r = -@rotation
+    step = Math.PI * 2 / 3
+    ctx
+      ..beginPath!
+      ..moveTo @radius + Math.cos(r) * @radius, @radius + Math.sin(r) * @radius
+    for i from 0 til 3
+      ctx.lineTo @radius + Math.cos(r) * @radius, @radius + Math.sin(r) * @radius
+      r += step
+    ctx
+      ..fillStyle = string-from-rgb rgb-from-hsv @hue, 1, 1
+      ..fill!
+
 class ColorpickerView extends View
   (data) ->
     super data
@@ -145,6 +165,8 @@ class ColorpickerView extends View
       inner: @data.sprite.width * 3 - 20
     @hue-ring = new HueRing @radius.outer, @radius.inner
       ..paint!
+    @hsv-triangle = new HSVTriangle @radius.inner
+      ..paint!
     @domElement
       ..width = @data.sprite.width * 6
       ..height = @data.sprite.height * 6
@@ -152,21 +174,10 @@ class ColorpickerView extends View
     center =
       x: @domElement.width / 2
       y: @domElement.height / 2
+    ring-width = @radius.outer - @radius.inner
     ctx = super!
       ..drawImage @hue-ring.domElement, 0, center.y - center.x
-    # draw triangle
-    r = -Math.PI / 2
-    ctx.beginPath!
-    ctx.moveTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
-    r += Math.PI * 2 / 3
-    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
-    r += Math.PI * 2 / 3
-    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
-    r += Math.PI * 2 / 3
-    ctx.lineTo center.x + Math.cos(r) * @radius.inner, center.y + Math.sin(r) * @radius.inner
-    ctx
-      ..fillStyle = \red
-      ..fill!
+      ..drawImage @hsv-triangle.domElement, ring-width, ring-width + center.y - center.x
 
 # main
 views = []

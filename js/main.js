@@ -1,5 +1,5 @@
 (function(){
-  var data, rgbFromHsv, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, HueRing, ColorpickerView, views, selector, painter, preview, colorpicker;
+  var data, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, HueRing, HSVTriangle, ColorpickerView, views, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
     mask: void 8,
@@ -38,6 +38,9 @@
       results$.push(0xff * (v + m));
     }
     return results$;
+  };
+  stringFromRgb = function(it){
+    return "rgb(" + ~~it[0] + "," + ~~it[1] + "," + ~~it[2] + ")";
   };
   ImageLoader = (function(){
     ImageLoader.displayName = 'ImageLoader';
@@ -134,10 +137,12 @@
   HueRing = (function(){
     HueRing.displayName = 'HueRing';
     var prototype = HueRing.prototype, constructor = HueRing;
-    function HueRing(outerRadius, innerRadius, offset){
+    function HueRing(outerRadius, innerRadius, rotation){
       this.outerRadius = outerRadius;
       this.innerRadius = innerRadius;
-      this.offset = offset != null ? offset : 90;
+      this.rotation = rotation != null
+        ? rotation
+        : Math.PI / 2;
       this.domElement = document.createElement('canvas');
     }
     prototype.paint = function(){
@@ -155,8 +160,8 @@
         i = i$;
         x = ~~(i % this.domElement.width);
         y = ~~(i / this.domElement.width);
-        rad = Math.atan2(y - center.y, x - center.x);
-        deg = rad * 180 / Math.PI + this.offset;
+        rad = this.rotation + Math.atan2(y - center.y, x - center.x);
+        deg = rad * 180 / Math.PI;
         rgb = rgbFromHsv(deg, 1, 1);
         imageData.data[i * 4 + 0] = ~~rgb[0];
         imageData.data[i * 4 + 1] = ~~rgb[1];
@@ -180,10 +185,41 @@
     };
     return HueRing;
   }());
+  HSVTriangle = (function(){
+    HSVTriangle.displayName = 'HSVTriangle';
+    var prototype = HSVTriangle.prototype, constructor = HSVTriangle;
+    function HSVTriangle(radius, rotation){
+      this.radius = radius;
+      this.rotation = rotation != null
+        ? rotation
+        : Math.PI / 2;
+      this.hue = 0;
+      this.domElement = document.createElement('canvas');
+    }
+    prototype.paint = function(){
+      var ctx, r, step, x$, i$, i, y$;
+      ctx = this.domElement.getContext('2d');
+      r = -this.rotation;
+      step = Math.PI * 2 / 3;
+      x$ = ctx;
+      x$.beginPath();
+      x$.moveTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
+      for (i$ = 0; i$ < 3; ++i$) {
+        i = i$;
+        ctx.lineTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
+        r += step;
+      }
+      y$ = ctx;
+      y$.fillStyle = stringFromRgb(rgbFromHsv(this.hue, 1, 1));
+      y$.fill();
+      return y$;
+    };
+    return HSVTriangle;
+  }());
   ColorpickerView = (function(superclass){
     var prototype = extend$((import$(ColorpickerView, superclass).displayName = 'ColorpickerView', ColorpickerView), superclass).prototype, constructor = ColorpickerView;
     function ColorpickerView(data){
-      var x$, y$;
+      var x$, y$, z$;
       ColorpickerView.superclass.call(this, data);
       this.radius = {
         outer: this.data.sprite.width * 3,
@@ -191,31 +227,23 @@
       };
       x$ = this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
       x$.paint();
-      y$ = this.domElement;
-      y$.width = this.data.sprite.width * 6;
-      y$.height = this.data.sprite.height * 6;
+      y$ = this.hsvTriangle = new HSVTriangle(this.radius.inner);
+      y$.paint();
+      z$ = this.domElement;
+      z$.width = this.data.sprite.width * 6;
+      z$.height = this.data.sprite.height * 6;
     }
     prototype.update = function(){
-      var center, x$, ctx, r, y$;
+      var center, ringWidth, x$, ctx;
       center = {
         x: this.domElement.width / 2,
         y: this.domElement.height / 2
       };
+      ringWidth = this.radius.outer - this.radius.inner;
       x$ = ctx = superclass.prototype.update.call(this);
       x$.drawImage(this.hueRing.domElement, 0, center.y - center.x);
-      r = -Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
-      r += Math.PI * 2 / 3;
-      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
-      r += Math.PI * 2 / 3;
-      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
-      r += Math.PI * 2 / 3;
-      ctx.lineTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);
-      y$ = ctx;
-      y$.fillStyle = 'red';
-      y$.fill();
-      return y$;
+      x$.drawImage(this.hsvTriangle.domElement, ringWidth, ringWidth + center.y - center.x);
+      return x$;
     };
     return ColorpickerView;
   }(View));
