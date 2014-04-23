@@ -1,5 +1,5 @@
 (function(){
-  var data, rgbFromHsv, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, ColorpickerView, views, selector, painter, preview, colorpicker;
+  var data, rgbFromHsv, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, HueRing, ColorpickerView, views, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
     mask: void 8,
@@ -131,52 +131,78 @@
     };
     return PreviewView;
   }(View));
-  ColorpickerView = (function(superclass){
-    var prototype = extend$((import$(ColorpickerView, superclass).displayName = 'ColorpickerView', ColorpickerView), superclass).prototype, constructor = ColorpickerView;
-    function ColorpickerView(data){
-      var x$;
-      ColorpickerView.superclass.call(this, data);
-      this.radius = {
-        outer: this.data.sprite.width * 3,
-        inner: this.data.sprite.width * 3 - 20
-      };
-      x$ = this.domElement;
-      x$.width = this.data.sprite.width * 6;
-      x$.height = this.data.sprite.height * 6;
+  HueRing = (function(){
+    HueRing.displayName = 'HueRing';
+    var prototype = HueRing.prototype, constructor = HueRing;
+    function HueRing(outerRadius, innerRadius, offset){
+      this.outerRadius = outerRadius;
+      this.innerRadius = innerRadius;
+      this.offset = offset != null ? offset : 90;
+      this.domElement = document.createElement('canvas');
     }
-    prototype.update = function(){
-      var center, ctx, imageData, i$, to$, i, x, y, rad, deg, rgb, x$, r, y$;
+    prototype.paint = function(){
+      var x$, center, ctx, imageData, i$, to$, i, x, y, rad, deg, rgb, y$;
+      x$ = this.domElement;
+      x$.width = this.outerRadius * 2;
+      x$.height = this.outerRadius * 2;
       center = {
-        x: this.domElement.width / 2,
-        y: this.domElement.height / 2
+        x: this.outerRadius,
+        y: this.outerRadius
       };
-      ctx = superclass.prototype.update.call(this);
+      ctx = this.domElement.getContext('2d');
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
       for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
         i = i$;
         x = ~~(i % this.domElement.width);
         y = ~~(i / this.domElement.width);
         rad = Math.atan2(y - center.y, x - center.x);
-        deg = rad * 180 / Math.PI + 90;
+        deg = rad * 180 / Math.PI + this.offset;
         rgb = rgbFromHsv(deg, 1, 1);
         imageData.data[i * 4 + 0] = ~~rgb[0];
         imageData.data[i * 4 + 1] = ~~rgb[1];
         imageData.data[i * 4 + 2] = ~~rgb[2];
         imageData.data[i * 4 + 3] = 0xff;
       }
-      x$ = ctx;
-      x$.putImageData(imageData, 0, 0);
-      x$.save();
-      x$.globalCompositeOperation = 'destination-in';
-      x$.fillStyle = 'black';
-      x$.beginPath();
-      x$.arc(center.x, center.y, this.radius.outer, 0, Math.PI * 2);
-      x$.fill();
-      x$.globalCompositeOperation = 'destination-out';
-      x$.beginPath();
-      x$.arc(center.x, center.y, this.radius.inner, 0, Math.PI * 2);
-      x$.fill();
-      x$.restore();
+      y$ = ctx;
+      y$.putImageData(imageData, 0, 0);
+      y$.save();
+      y$.globalCompositeOperation = 'destination-in';
+      y$.fillStyle = 'black';
+      y$.beginPath();
+      y$.arc(center.x, center.y, this.outerRadius, 0, Math.PI * 2);
+      y$.fill();
+      y$.globalCompositeOperation = 'destination-out';
+      y$.beginPath();
+      y$.arc(center.x, center.y, this.innerRadius, 0, Math.PI * 2);
+      y$.fill();
+      y$.restore();
+      return y$;
+    };
+    return HueRing;
+  }());
+  ColorpickerView = (function(superclass){
+    var prototype = extend$((import$(ColorpickerView, superclass).displayName = 'ColorpickerView', ColorpickerView), superclass).prototype, constructor = ColorpickerView;
+    function ColorpickerView(data){
+      var x$, y$;
+      ColorpickerView.superclass.call(this, data);
+      this.radius = {
+        outer: this.data.sprite.width * 3,
+        inner: this.data.sprite.width * 3 - 20
+      };
+      x$ = this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
+      x$.paint();
+      y$ = this.domElement;
+      y$.width = this.data.sprite.width * 6;
+      y$.height = this.data.sprite.height * 6;
+    }
+    prototype.update = function(){
+      var center, x$, ctx, r, y$;
+      center = {
+        x: this.domElement.width / 2,
+        y: this.domElement.height / 2
+      };
+      x$ = ctx = superclass.prototype.update.call(this);
+      x$.drawImage(this.hueRing.domElement, 0, center.y - center.x);
       r = -Math.PI / 2;
       ctx.beginPath();
       ctx.moveTo(center.x + Math.cos(r) * this.radius.inner, center.y + Math.sin(r) * this.radius.inner);

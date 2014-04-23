@@ -85,21 +85,18 @@ class PreviewView extends View
       0, 0
       @data.sprite.width * 6, @data.sprite.height * 6
 
-class ColorpickerView extends View
-  (data) ->
-    super data
-    @radius =
-      outer: @data.sprite.width * 3
-      inner: @data.sprite.width * 3 - 20
+class HueRing
+  (@outer-radius, @inner-radius, @offset = 90) ->
+    @domElement = document.createElement \canvas
+  paint: ->
     @domElement
-      ..width = @data.sprite.width * 6
-      ..height = @data.sprite.height * 6
-  update: ->
+      ..width = @outer-radius * 2
+      ..height = @outer-radius * 2
     center =
-      x: @domElement.width / 2
-      y: @domElement.height / 2
-    ctx = super!
-    # draw HSV gradient
+      x: @outer-radius
+      y: @outer-radius
+    # draw hue gradient
+    ctx = @domElement.getContext \2d
     image-data = ctx.getImageData do
       0, 0
       @domElement.width, @domElement.height
@@ -107,7 +104,7 @@ class ColorpickerView extends View
       x = ~~(i % @domElement.width)
       y = ~~(i / @domElement.width)
       rad = Math.atan2 y - center.y, x - center.x
-      deg = rad * 180 / Math.PI + 90
+      deg = rad * 180 / Math.PI + @offset
       rgb   = rgb-from-hsv deg, 1, 1
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
@@ -128,17 +125,35 @@ class ColorpickerView extends View
       ..beginPath!
       ..arc do
         center.x, center.y,
-        @radius.outer,
+        @outer-radius,
         0, Math.PI * 2
       ..fill!
       ..globalCompositeOperation = \destination-out
       ..beginPath!
       ..arc do
         center.x, center.y,
-        @radius.inner,
+        @inner-radius,
         0, Math.PI * 2
       ..fill!
       ..restore!
+
+class ColorpickerView extends View
+  (data) ->
+    super data
+    @radius =
+      outer: @data.sprite.width * 3
+      inner: @data.sprite.width * 3 - 20
+    @hue-ring = new HueRing @radius.outer, @radius.inner
+      ..paint!
+    @domElement
+      ..width = @data.sprite.width * 6
+      ..height = @data.sprite.height * 6
+  update: ->
+    center =
+      x: @domElement.width / 2
+      y: @domElement.height / 2
+    ctx = super!
+      ..drawImage @hue-ring.domElement, 0, center.y - center.x
     # draw triangle
     r = -Math.PI / 2
     ctx.beginPath!
