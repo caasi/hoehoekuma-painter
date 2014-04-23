@@ -193,17 +193,12 @@
       this.domElement = document.createElement('canvas');
     }
     prototype.paint = function(){
-      var x$, r, saturation, value, ctx, imageData, i$, to$, i, x, y, delta, rad, s, v, rgb, step, y$, z$;
+      var x$, r, saturation, ctx, imageData, i$, to$, i, x, y, delta, rad, s, v, rgb, step, y$, z$;
       x$ = this.domElement;
       x$.width = 2 * this.radius;
       x$.height = 2 * this.radius;
       r = Math.PI * 5 / 6;
       saturation = {
-        x: this.radius + this.radius * Math.cos(r),
-        y: this.radius + this.radius * Math.sin(r)
-      };
-      r = Math.PI / 6;
-      value = {
         x: this.radius + this.radius * Math.cos(r),
         y: this.radius + this.radius * Math.sin(r)
       };
@@ -219,13 +214,9 @@
           y: saturation.y - y
         };
         rad = Math.atan2(delta.y, delta.x);
-        s = rad / r;
-        delta = {
-          x: value.x - x,
-          y: value.y - y
-        };
-        rad = Math.atan2(delta.y, delta.x);
-        v = rad / r;
+        s = delta.y / delta.x * Math.cos(Math.PI / 6);
+        v = x / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
+        v /= this.radius * 3 / 2;
         rgb = rgbFromHsv(this.hue, s, v);
         imageData.data[i * 4 + 0] = ~~rgb[0];
         imageData.data[i * 4 + 1] = ~~rgb[1];

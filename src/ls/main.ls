@@ -149,10 +149,6 @@ class HSVTriangle
     saturation =
       x: @radius + @radius * Math.cos r
       y: @radius + @radius * Math.sin r
-    r = Math.PI / 6
-    value =
-      x: @radius + @radius * Math.cos r
-      y: @radius + @radius * Math.sin r
     ctx = @domElement.getContext \2d
     image-data = ctx.getImageData do
       0, 0
@@ -165,12 +161,9 @@ class HSVTriangle
         x: x - saturation.x
         y: saturation.y - y
       rad = Math.atan2 delta.y, delta.x
-      s = rad / r
-      delta =
-        x: value.x - x
-        y: value.y - y
-      rad = Math.atan2 delta.y, delta.x
-      v = rad / r
+      s = delta.y / delta.x * Math.cos Math.PI / 6
+      v = x / Math.cos(rad) * Math.sin(rad + Math.PI / 3)
+      v /= @radius * 3 / 2
       rgb = rgb-from-hsv @hue, s, v
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
