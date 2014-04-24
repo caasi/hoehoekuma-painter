@@ -21,6 +21,10 @@ class HueRing extends Canvas
   (@outer-radius, @inner-radius, @rotation = - Math.PI / 2) ->
     super!
     @debug = off
+  hueFromPosition: (x, y) ->
+    deg = Math.atan2(y - @outer-radius, x - @outer-radius) - @rotation
+    deg *= 180 / Math.PI
+    (deg + 360) % 360
   paint: ->
     @domElement
       ..width = @outer-radius * 2
@@ -36,9 +40,7 @@ class HueRing extends Canvas
     for i from 0 til @domElement.width * @domElement.height
       x = ~~(i % @domElement.width)
       y = ~~(i / @domElement.width)
-      rad = - @rotation + Math.atan2 y - center.y, x - center.x
-      deg = rad * 180 / Math.PI
-      rgb   = rgb-from-hsv deg, 1, 1
+      rgb   = rgb-from-hsv @hueFromPosition(x, y), 1, 1
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
       image-data.data[i * 4 + 2] = ~~rgb.2
@@ -76,30 +78,36 @@ class HSVTriangle extends Canvas
     super!
     @debug = off
     @hue = 0
+  updateRotationMatrix: ->
+    @matrix = mat2d.create!
+    mat2d
+      ..translate @matrix, @matrix, [@radius, @radius]
+      ..rotate    @matrix, @matrix, -@rotation
+      ..translate @matrix, @matrix, [-@radius, -@radius]
+  updateSaturationPoint: ->
+    r = Math.PI * 4 / 3
+    @point-s = vec2.fromValues @radius + @radius * Math.cos(r), @radius + @radius * Math.sin(r)
+  SVFromPosition: (x, y) ->
+    p = vec2.fromValues x, y
+    vec2.transformMat2d p, p, @matrix
+    vec2.subtract p, p, @point-s
+    rad = Math.PI / 2 - Math.atan2 p.1, p.0
+    s = p.0 / p.1 * Math.cos Math.PI / 6
+    v = p.1 / Math.cos(rad) * Math.sin(rad + Math.PI / 3)
+    v /= @radius * 3 / 2
+    [s, v]
   paint: ->
     @domElement
       ..width = 2 * @radius
       ..height = 2 * @radius
-    m = mat2d.create!
-    mat2d
-      ..translate m, m, [@radius, @radius]
-      ..rotate    m, m, -@rotation
-      ..translate m, m, [-@radius, -@radius]
-    r = Math.PI * 4 / 3
-    saturation = vec2.fromValues @radius + @radius * Math.cos(r), @radius + @radius * Math.sin(r)
+    @updateRotationMatrix!
+    @updateSaturationPoint!
     ctx = super!
     image-data = ctx.getImageData do
       0, 0
       @domElement.width, @domElement.height
     for i from 0 til @domElement.width * @domElement.height
-      pos = vec2.fromValues ~~(i % @domElement.width), ~~(i / @domElement.width)
-      vec2.transformMat2d pos, pos, m
-      delta = vec2.create!
-      vec2.subtract delta, pos, saturation
-      rad = Math.PI / 2 - Math.atan2 delta.1, delta.0
-      s = delta.0 / delta.1 * Math.cos Math.PI / 6
-      v = delta.1 / Math.cos(rad) * Math.sin(rad + Math.PI / 3)
-      v /= @radius * 3 / 2
+      [s, v] = @SVFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
       rgb = rgb-from-hsv @hue, s, v
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
@@ -126,9 +134,10 @@ class HSVTriangle extends Canvas
 class ColorpickerView extends View
   (data) ->
     super data
+    @ring-width = 20
     @radius =
       outer: @data.sprite.width * 3
-      inner: @data.sprite.width * 3 - 20
+      inner: @data.sprite.width * 3 - @ring-width
     @hue-ring = new HueRing @radius.outer, @radius.inner
     @hsv-triangle = new HSVTriangle @radius.inner
       ..rotation = @hue-ring.rotation + glMatrix.toRadian @hsv-triangle.hue
@@ -152,12 +161,10 @@ class ColorpickerView extends View
         offset = $canvas.offset!
         x = e.pageX - offset.left
         y = e.pageY - offset.top - @offset-y
-        r = @hue-ring.outer-radius
-        deg = Math.atan2(y - r, x - r) - @hue-ring.rotation
-        deg = deg * 180 / Math.PI
+        hue = @hue-ring.hueFromPosition x, y
         @hsv-triangle = new HSVTriangle @radius.inner
-          ..hue = (deg + 360) % 360
-          ..rotation = @hue-ring.rotation + glMatrix.toRadian @hsv-triangle.hue
+          ..hue = hue
+          ..rotation = @hue-ring.rotation + glMatrix.toRadian hue
           ..dirty = true
       mouseup: ~>
         $doc
@@ -165,35 +172,36 @@ class ColorpickerView extends View
           ..off \mouseup   ring.mouseup
     triangle =
       mousedown: (e) ~>
-        ring-width = @radius.outer - @radius.inner
         offset = $canvas.offset!
-        x = e.pageX - offset.left - ring-width
-        y = e.pageY - offset.top - @offset-y - ring-width
-        @hsv-triangle.hitTest x, y
+        x = e.pageX - offset.left - @ring-width
+        y = e.pageY - offset.top - @offset-y - @ring-width
+        if @hsv-triangle.hitTest x, y
+          [s, v] = @hsv-triangle.SVFromPosition x, y
+          console.log string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
       mousemove: (e) ~>
         ...
       mouseup: ~>
-        $doc
-          ..off \mousemove triangle.mousemove
-          ..off \mouseup   triangle.mouseup
+        #$doc
+        #  ..off \mousemove triangle.mousemove
+        #  ..off \mouseup   triangle.mouseup
+        ...
     $canvas = $(@domElement)
       ..mousedown ring.mousedown
       ..mousedown triangle.mousedown
   update: ->
-    ring-width = @radius.outer - @radius.inner
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
     ctx = super!
       ..drawImage @hue-ring.domElement, 0, @offset-y
-      ..drawImage @hsv-triangle.domElement, ring-width, ring-width + @offset-y
+      ..drawImage @hsv-triangle.domElement, @ring-width, @ring-width + @offset-y
     rad = glMatrix.toRadian(@hsv-triangle.hue) + @hue-ring.rotation
     r = (@hue-ring.outer-radius + @hue-ring.inner-radius) / 2
     x = @hue-ring.outer-radius + r * Math.cos rad
     y = @offset-y + @hue-ring.outer-radius + r * Math.sin rad
     ctx
       ..beginPath!
-      ..arc x, y, ring-width / 4, 0, Math.PI * 2
+      ..arc x, y, @ring-width / 4, 0, Math.PI * 2
       ..strokeStyle = \white
-      ..lineWidth = ring-width / 10
+      ..lineWidth = @ring-width / 10
       ..stroke!
 

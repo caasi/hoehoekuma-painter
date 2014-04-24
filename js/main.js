@@ -172,8 +172,14 @@
       HueRing.superclass.call(this);
       this.debug = false;
     }
+    prototype.hueFromPosition = function(x, y){
+      var deg;
+      deg = Math.atan2(y - this.outerRadius, x - this.outerRadius) - this.rotation;
+      deg *= 180 / Math.PI;
+      return (deg + 360) % 360;
+    };
     prototype.paint = function(){
-      var x$, center, ctx, imageData, i$, to$, i, x, y, rad, deg, rgb, y$;
+      var x$, center, ctx, imageData, i$, to$, i, x, y, rgb, y$;
       x$ = this.domElement;
       x$.width = this.outerRadius * 2;
       x$.height = this.outerRadius * 2;
@@ -187,9 +193,7 @@
         i = i$;
         x = ~~(i % this.domElement.width);
         y = ~~(i / this.domElement.width);
-        rad = -this.rotation + Math.atan2(y - center.y, x - center.x);
-        deg = rad * 180 / Math.PI;
-        rgb = rgbFromHsv(deg, 1, 1);
+        rgb = rgbFromHsv(this.hueFromPosition(x, y), 1, 1);
         imageData.data[i * 4 + 0] = ~~rgb[0];
         imageData.data[i * 4 + 1] = ~~rgb[1];
         imageData.data[i * 4 + 2] = ~~rgb[2];
@@ -226,30 +230,43 @@
       this.debug = false;
       this.hue = 0;
     }
+    prototype.updateRotationMatrix = function(){
+      var x$;
+      this.matrix = mat2d.create();
+      x$ = mat2d;
+      x$.translate(this.matrix, this.matrix, [this.radius, this.radius]);
+      x$.rotate(this.matrix, this.matrix, -this.rotation);
+      x$.translate(this.matrix, this.matrix, [-this.radius, -this.radius]);
+      return x$;
+    };
+    prototype.updateSaturationPoint = function(){
+      var r;
+      r = Math.PI * 4 / 3;
+      return this.pointS = vec2.fromValues(this.radius + this.radius * Math.cos(r), this.radius + this.radius * Math.sin(r));
+    };
+    prototype.SVFromPosition = function(x, y){
+      var p, rad, s, v;
+      p = vec2.fromValues(x, y);
+      vec2.transformMat2d(p, p, this.matrix);
+      vec2.subtract(p, p, this.pointS);
+      rad = Math.PI / 2 - Math.atan2(p[1], p[0]);
+      s = p[0] / p[1] * Math.cos(Math.PI / 6);
+      v = p[1] / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
+      v /= this.radius * 3 / 2;
+      return [s, v];
+    };
     prototype.paint = function(){
-      var x$, m, y$, r, saturation, ctx, imageData, i$, to$, i, pos, delta, rad, s, v, rgb, step, z$, z1$;
+      var x$, ctx, imageData, i$, to$, i, ref$, s, v, rgb, r, step, y$, z$;
       x$ = this.domElement;
       x$.width = 2 * this.radius;
       x$.height = 2 * this.radius;
-      m = mat2d.create();
-      y$ = mat2d;
-      y$.translate(m, m, [this.radius, this.radius]);
-      y$.rotate(m, m, -this.rotation);
-      y$.translate(m, m, [-this.radius, -this.radius]);
-      r = Math.PI * 4 / 3;
-      saturation = vec2.fromValues(this.radius + this.radius * Math.cos(r), this.radius + this.radius * Math.sin(r));
+      this.updateRotationMatrix();
+      this.updateSaturationPoint();
       ctx = superclass.prototype.paint.call(this);
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
       for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
         i = i$;
-        pos = vec2.fromValues(~~(i % this.domElement.width), ~~(i / this.domElement.width));
-        vec2.transformMat2d(pos, pos, m);
-        delta = vec2.create();
-        vec2.subtract(delta, pos, saturation);
-        rad = Math.PI / 2 - Math.atan2(delta[1], delta[0]);
-        s = delta[0] / delta[1] * Math.cos(Math.PI / 6);
-        v = delta[1] / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
-        v /= this.radius * 3 / 2;
+        ref$ = this.SVFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
         rgb = rgbFromHsv(this.hue, s, v);
         imageData.data[i * 4 + 0] = ~~rgb[0];
         imageData.data[i * 4 + 1] = ~~rgb[1];
@@ -262,21 +279,21 @@
       }
       r = this.rotation;
       step = Math.PI * 2 / 3;
-      z$ = ctx;
-      z$.beginPath();
-      z$.moveTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
+      y$ = ctx;
+      y$.beginPath();
+      y$.moveTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
       for (i$ = 0; i$ < 3; ++i$) {
         i = i$;
         ctx.lineTo(this.radius + Math.cos(r) * this.radius, this.radius + Math.sin(r) * this.radius);
         r += step;
       }
-      z1$ = ctx;
-      z1$.save();
-      z1$.globalCompositeOperation = 'destination-in';
-      z1$.fillStyle = 'black';
-      z1$.fill();
-      z1$.restore();
-      return z1$;
+      z$ = ctx;
+      z$.save();
+      z$.globalCompositeOperation = 'destination-in';
+      z$.fillStyle = 'black';
+      z$.fill();
+      z$.restore();
+      return z$;
     };
     return HSVTriangle;
   }(Canvas));
@@ -285,9 +302,10 @@
     function ColorpickerView(data){
       var x$, y$, $doc, ring, triangle, z$, $canvas, this$ = this;
       ColorpickerView.superclass.call(this, data);
+      this.ringWidth = 20;
       this.radius = {
         outer: this.data.sprite.width * 3,
-        inner: this.data.sprite.width * 3 - 20
+        inner: this.data.sprite.width * 3 - this.ringWidth
       };
       this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
       x$ = this.hsvTriangle = new HSVTriangle(this.radius.inner);
@@ -312,16 +330,14 @@
           }
         },
         mousemove: function(e){
-          var offset, x, y, r, deg, x$;
+          var offset, x, y, hue, x$;
           offset = $canvas.offset();
           x = e.pageX - offset.left;
           y = e.pageY - offset.top - this$.offsetY;
-          r = this$.hueRing.outerRadius;
-          deg = Math.atan2(y - r, x - r) - this$.hueRing.rotation;
-          deg = deg * 180 / Math.PI;
+          hue = this$.hueRing.hueFromPosition(x, y);
           x$ = this$.hsvTriangle = new HSVTriangle(this$.radius.inner);
-          x$.hue = (deg + 360) % 360;
-          x$.rotation = this$.hueRing.rotation + glMatrix.toRadian(this$.hsvTriangle.hue);
+          x$.hue = hue;
+          x$.rotation = this$.hueRing.rotation + glMatrix.toRadian(hue);
           x$.dirty = true;
           return x$;
         },
@@ -335,22 +351,20 @@
       };
       triangle = {
         mousedown: function(e){
-          var ringWidth, offset, x, y;
-          ringWidth = this$.radius.outer - this$.radius.inner;
+          var offset, x, y, ref$, s, v;
           offset = $canvas.offset();
-          x = e.pageX - offset.left - ringWidth;
-          y = e.pageY - offset.top - this$.offsetY - ringWidth;
-          return this$.hsvTriangle.hitTest(x, y);
+          x = e.pageX - offset.left - this$.ringWidth;
+          y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
+          if (this$.hsvTriangle.hitTest(x, y)) {
+            ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
+            return console.log(stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v)));
+          }
         },
         mousemove: function(e){
           throw Error('unimplemented');
         },
         mouseup: function(){
-          var x$;
-          x$ = $doc;
-          x$.off('mousemove', triangle.mousemove);
-          x$.off('mouseup', triangle.mouseup);
-          return x$;
+          throw Error('unimplemented');
         }
       };
       z$ = $canvas = $(this.domElement);
@@ -358,8 +372,7 @@
       z$.mousedown(triangle.mousedown);
     }
     prototype.update = function(){
-      var ringWidth, x$, ctx, rad, r, x, y, y$;
-      ringWidth = this.radius.outer - this.radius.inner;
+      var x$, ctx, rad, r, x, y, y$;
       if (this.hueRing.dirty) {
         this.hueRing.paint();
       }
@@ -368,16 +381,16 @@
       }
       x$ = ctx = superclass.prototype.update.call(this);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
-      x$.drawImage(this.hsvTriangle.domElement, ringWidth, ringWidth + this.offsetY);
+      x$.drawImage(this.hsvTriangle.domElement, this.ringWidth, this.ringWidth + this.offsetY);
       rad = glMatrix.toRadian(this.hsvTriangle.hue) + this.hueRing.rotation;
       r = (this.hueRing.outerRadius + this.hueRing.innerRadius) / 2;
       x = this.hueRing.outerRadius + r * Math.cos(rad);
       y = this.offsetY + this.hueRing.outerRadius + r * Math.sin(rad);
       y$ = ctx;
       y$.beginPath();
-      y$.arc(x, y, ringWidth / 4, 0, Math.PI * 2);
+      y$.arc(x, y, this.ringWidth / 4, 0, Math.PI * 2);
       y$.strokeStyle = 'white';
-      y$.lineWidth = ringWidth / 10;
+      y$.lineWidth = this.ringWidth / 10;
       y$.stroke();
       return y$;
     };
