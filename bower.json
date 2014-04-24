@@ -20,14 +20,11 @@
   "dependencies": {
     "jquery": "~2.1.0",
     "semantic-ui": "~0.15.5",
-    "sylvester": "~0.1.3"
+    "gl-matrix": "~2.2.1"
   },
   "overrides": {
     "semantic-ui": {
       "main": "build/packaged/**/*"
-    },
-    "sylvester": {
-      "main": "sylvester.js"
     }
   }
 }
