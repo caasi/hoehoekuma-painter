@@ -14,9 +14,9 @@ rgb-from-hsv = (h, s, v) ->
   | h <  4 => [0, x, c]
   | h <  5 => [x, 0, c]
   | h <= 6 => [c, 0, x]
-  for v in rgb => 0xff * (v + m)
+  for v in rgb => ~~(0xff * (v + m))
 
-string-from-rgb = -> "rgb(#{~~it.0},#{~~it.1},#{~~it.2})"
+string-from-rgb = -> "rgb(#{it.0},#{it.1},#{it.2})"
 
 class ImageLoader
   (@paths) ->

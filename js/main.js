@@ -34,12 +34,12 @@
     }());
     for (i$ = 0, len$ = rgb.length; i$ < len$; ++i$) {
       v = rgb[i$];
-      results$.push(0xff * (v + m));
+      results$.push(~~(0xff * (v + m)));
     }
     return results$;
   };
   stringFromRgb = function(it){
-    return "rgb(" + ~~it[0] + "," + ~~it[1] + "," + ~~it[2] + ")";
+    return "rgb(" + it[0] + "," + it[1] + "," + it[2] + ")";
   };
   ImageLoader = (function(){
     ImageLoader.displayName = 'ImageLoader';
@@ -244,7 +244,7 @@
       r = Math.PI * 4 / 3;
       return this.pointS = vec2.fromValues(this.radius + this.radius * Math.cos(r), this.radius + this.radius * Math.sin(r));
     };
-    prototype.SVFromPosition = function(x, y){
+    prototype.SVRFromPosition = function(x, y){
       var p, rad, s, v;
       p = vec2.fromValues(x, y);
       vec2.transformMat2d(p, p, this.matrix);
@@ -254,7 +254,19 @@
       s /= p[1] + s * Math.sin(Math.PI / 6);
       v = p[1] / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
       v /= this.radius * 3 / 2;
-      return [s, v];
+      return [s, v, rad];
+    };
+    prototype.PositionFromSVR = function(s, v, rad){
+      var y, x, p, m;
+      y = v * this.radius * 3 / 2;
+      y = y * Math.cos(rad) / Math.sin(rad + Math.PI / 3);
+      x = y * Math.tan(rad);
+      p = vec2.fromValues(x, y);
+      vec2.add(p, p, this.pointS);
+      m = mat2d.create();
+      m = mat2d.invert(m, this.matrix);
+      vec2.transformMat2d(p, p, m);
+      return p;
     };
     prototype.paint = function(){
       var x$, ctx, imageData, i$, to$, i, ref$, s, v, rgb, r, step, y$, z$;
@@ -267,11 +279,11 @@
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
       for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
         i = i$;
-        ref$ = this.SVFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
+        ref$ = this.SVRFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
         rgb = rgbFromHsv(this.hue, s, v);
-        imageData.data[i * 4 + 0] = ~~rgb[0];
-        imageData.data[i * 4 + 1] = ~~rgb[1];
-        imageData.data[i * 4 + 2] = ~~rgb[2];
+        imageData.data[i * 4 + 0] = rgb[0];
+        imageData.data[i * 4 + 1] = rgb[1];
+        imageData.data[i * 4 + 2] = rgb[2];
         imageData.data[i * 4 + 3] = 0xff;
       }
       ctx.putImageData(imageData, 0, 0);
@@ -315,6 +327,12 @@
       y$.width = this.data.sprite.width * 6;
       y$.height = this.data.sprite.height * 6;
       this.offsetY = (this.domElement.height - this.domElement.width) / 2;
+      this.color = {
+        s: 1,
+        v: 1,
+        rad: 0,
+        rgb: 'white'
+      };
       $doc = $(document);
       ring = {
         mousedown: function(e){
@@ -340,7 +358,7 @@
           x$.hue = hue;
           x$.rotation = this$.hueRing.rotation + glMatrix.toRadian(hue);
           x$.dirty = true;
-          return x$;
+          return this$.color.rgb = stringFromRgb(rgbFromHsv(hue, this$.color.s, this$.color.v));
         },
         mouseup: function(){
           var x$;
@@ -352,20 +370,39 @@
       };
       triangle = {
         mousedown: function(e){
-          var offset, x, y, ref$, s, v;
+          var offset, x, y, x$;
           offset = $canvas.offset();
           x = e.pageX - offset.left - this$.ringWidth;
           y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
           if (this$.hsvTriangle.hitTest(x, y)) {
-            ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
-            return console.log(stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v)));
+            triangle.mousemove(e);
+            x$ = $doc;
+            x$.mousemove(triangle.mousemove);
+            x$.mouseup(triangle.mouseup);
+            return x$;
           }
         },
         mousemove: function(e){
-          throw Error('unimplemented');
+          var offset, x, y, ref$, s, v, rad, x$;
+          offset = $canvas.offset();
+          x = e.pageX - offset.left - this$.ringWidth;
+          y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
+          ref$ = this$.hsvTriangle.SVRFromPosition(x, y), s = ref$[0], v = ref$[1], rad = ref$[2];
+          if ((0 <= s && s < 1) && (0 <= v && v < 1)) {
+            x$ = this$.color;
+            x$.s = s;
+            x$.v = v;
+            x$.rad = rad;
+            x$.rgb = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
+            return x$;
+          }
         },
         mouseup: function(){
-          throw Error('unimplemented');
+          var x$;
+          x$ = $doc;
+          x$.off('mousemove', triangle.mousemove);
+          x$.off('mouseup', triangle.mouseup);
+          return x$;
         }
       };
       z$ = $canvas = $(this.domElement);
@@ -373,7 +410,7 @@
       z$.mousedown(triangle.mousedown);
     }
     prototype.update = function(){
-      var x$, ctx, rad, r, x, y, y$;
+      var x$, ctx, rad, r, x, y, y$, ref$, z$;
       if (this.hueRing.dirty) {
         this.hueRing.paint();
       }
@@ -393,7 +430,12 @@
       y$.strokeStyle = 'white';
       y$.lineWidth = this.ringWidth / 10;
       y$.stroke();
-      return y$;
+      ref$ = this.hsvTriangle.PositionFromSVR(this.color.s, this.color.v, this.color.rad), x = ref$[0], y = ref$[1];
+      z$ = ctx;
+      z$.beginPath();
+      z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
+      z$.stroke();
+      return z$;
     };
     return ColorpickerView;
   }(View));
