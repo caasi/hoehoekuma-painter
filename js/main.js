@@ -249,8 +249,9 @@
       p = vec2.fromValues(x, y);
       vec2.transformMat2d(p, p, this.matrix);
       vec2.subtract(p, p, this.pointS);
-      rad = Math.PI / 2 - Math.atan2(p[1], p[0]);
-      s = p[0] / p[1] * Math.cos(Math.PI / 6);
+      rad = Math.atan2(p[0], p[1]);
+      s = p[0] / Math.cos(Math.PI / 6);
+      s /= p[1] + s * Math.sin(Math.PI / 6);
       v = p[1] / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
       v /= this.radius * 3 / 2;
       return [s, v];

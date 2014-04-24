@@ -91,8 +91,9 @@ class HSVTriangle extends Canvas
     p = vec2.fromValues x, y
     vec2.transformMat2d p, p, @matrix
     vec2.subtract p, p, @point-s
-    rad = Math.PI / 2 - Math.atan2 p.1, p.0
-    s = p.0 / p.1 * Math.cos Math.PI / 6
+    rad = Math.atan2 p.0, p.1
+    s = p.0 / Math.cos Math.PI / 6
+    s /= p.1 + s * Math.sin Math.PI / 6
     v = p.1 / Math.cos(rad) * Math.sin(rad + Math.PI / 3)
     v /= @radius * 3 / 2
     [s, v]
@@ -108,6 +109,7 @@ class HSVTriangle extends Canvas
       @domElement.width, @domElement.height
     for i from 0 til @domElement.width * @domElement.height
       [s, v] = @SVFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
+      #continue unless 0 < s <= 1 and 0 < v <= 1
       rgb = rgb-from-hsv @hue, s, v
       image-data.data[i * 4 + 0] = ~~rgb.0
       image-data.data[i * 4 + 1] = ~~rgb.1
@@ -177,6 +179,7 @@ class ColorpickerView extends View
         y = e.pageY - offset.top - @offset-y - @ring-width
         if @hsv-triangle.hitTest x, y
           [s, v] = @hsv-triangle.SVFromPosition x, y
+          #console.log s, v
           console.log string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
       mousemove: (e) ~>
         ...
