@@ -32,8 +32,11 @@ gulp.task \js:vendor <[bower]> ->
 
 gulp.task \js:app ->
   gulp.src do
-    * "#{path.src}/**/*.ls"
-    ...
+    * "#{path.src}/ls/data.ls"
+      "#{path.src}/ls/utils.ls"
+      "#{path.src}/ls/view.ls"
+      "#{path.src}/ls/colorpicker.ls"
+      "#{path.src}/ls/main.ls"
   .pipe gulp-concat 'main.ls'
   .pipe livescript!
   .pipe gulp.dest "#{path.build}/js"
