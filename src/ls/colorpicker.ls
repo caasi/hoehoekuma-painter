@@ -1,14 +1,20 @@
 class Canvas
   ->
     @domElement = document.createElement \canvas
+    @dirty = true
   hitTest: (x, y) ->
+    return false unless 0 <= x < @domElement.width
+    return false unless 0 <= y < @domElement.height
     ctx = @domElement.getContext \2d
     image-data = ctx.getImageData do
       0, 0
       @domElement.width, @domElement.height
-    i = y * @domElement.width + x
-    0 <= i < image-data.data.length / 4 and image-data.data[i * 4 + 3] isnt 0x00
+    x = ~~x
+    y = ~~y
+    i = y * image-data.width + x
+    image-data.data[i * 4 + 3] isnt 0x00
   paint: ->
+    @dirty = false
     @domElement.getContext \2d
 
 class HueRing extends Canvas
@@ -124,10 +130,8 @@ class ColorpickerView extends View
       outer: @data.sprite.width * 3
       inner: @data.sprite.width * 3 - 20
     @hue-ring = new HueRing @radius.outer, @radius.inner
-      ..paint!
     @hsv-triangle = new HSVTriangle @radius.inner
       ..rotation = @hue-ring.rotation + glMatrix.toRadian @hsv-triangle.hue
-      ..paint!
     @domElement
       ..width = @data.sprite.width * 6
       ..height = @data.sprite.height * 6
@@ -154,7 +158,7 @@ class ColorpickerView extends View
         @hsv-triangle = new HSVTriangle @radius.inner
           ..hue = (deg + 360) % 360
           ..rotation = @hue-ring.rotation + glMatrix.toRadian @hsv-triangle.hue
-          ..paint!
+          ..dirty = true
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
@@ -165,8 +169,7 @@ class ColorpickerView extends View
         offset = $canvas.offset!
         x = e.pageX - offset.left - ring-width
         y = e.pageY - offset.top - @offset-y - ring-width
-        if @hsv-triangle.hitTest x, y
-          console.log \hit
+        @hsv-triangle.hitTest x, y
       mousemove: (e) ~>
         ...
       mouseup: ~>
@@ -178,6 +181,8 @@ class ColorpickerView extends View
       ..mousedown triangle.mousedown
   update: ->
     ring-width = @radius.outer - @radius.inner
+    @hue-ring.paint!     if @hue-ring.dirty
+    @hsv-triangle.paint! if @hsv-triangle.dirty
     ctx = super!
       ..drawImage @hue-ring.domElement, 0, @offset-y
       ..drawImage @hsv-triangle.domElement, ring-width, ring-width + @offset-y

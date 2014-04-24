@@ -138,15 +138,25 @@
     var prototype = Canvas.prototype, constructor = Canvas;
     function Canvas(){
       this.domElement = document.createElement('canvas');
+      this.dirty = true;
     }
     prototype.hitTest = function(x, y){
       var ctx, imageData, i;
+      if (!(0 <= x && x < this.domElement.width)) {
+        return false;
+      }
+      if (!(0 <= y && y < this.domElement.height)) {
+        return false;
+      }
       ctx = this.domElement.getContext('2d');
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
-      i = y * this.domElement.width + x;
-      return (0 <= i && i < imageData.data.length / 4) && imageData.data[i * 4 + 3] !== 0x00;
+      x = ~~x;
+      y = ~~y;
+      i = y * imageData.width + x;
+      return imageData.data[i * 4 + 3] !== 0x00;
     };
     prototype.paint = function(){
+      this.dirty = false;
       return this.domElement.getContext('2d');
     };
     return Canvas;
@@ -273,20 +283,18 @@
   ColorpickerView = (function(superclass){
     var prototype = extend$((import$(ColorpickerView, superclass).displayName = 'ColorpickerView', ColorpickerView), superclass).prototype, constructor = ColorpickerView;
     function ColorpickerView(data){
-      var x$, y$, z$, $doc, ring, triangle, z1$, $canvas, this$ = this;
+      var x$, y$, $doc, ring, triangle, z$, $canvas, this$ = this;
       ColorpickerView.superclass.call(this, data);
       this.radius = {
         outer: this.data.sprite.width * 3,
         inner: this.data.sprite.width * 3 - 20
       };
-      x$ = this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
-      x$.paint();
-      y$ = this.hsvTriangle = new HSVTriangle(this.radius.inner);
-      y$.rotation = this.hueRing.rotation + glMatrix.toRadian(this.hsvTriangle.hue);
-      y$.paint();
-      z$ = this.domElement;
-      z$.width = this.data.sprite.width * 6;
-      z$.height = this.data.sprite.height * 6;
+      this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
+      x$ = this.hsvTriangle = new HSVTriangle(this.radius.inner);
+      x$.rotation = this.hueRing.rotation + glMatrix.toRadian(this.hsvTriangle.hue);
+      y$ = this.domElement;
+      y$.width = this.data.sprite.width * 6;
+      y$.height = this.data.sprite.height * 6;
       this.offsetY = (this.domElement.height - this.domElement.width) / 2;
       $doc = $(document);
       ring = {
@@ -314,7 +322,7 @@
           x$ = this$.hsvTriangle = new HSVTriangle(this$.radius.inner);
           x$.hue = (deg + 360) % 360;
           x$.rotation = this$.hueRing.rotation + glMatrix.toRadian(this$.hsvTriangle.hue);
-          x$.paint();
+          x$.dirty = true;
           return x$;
         },
         mouseup: function(){
@@ -332,9 +340,7 @@
           offset = $canvas.offset();
           x = e.pageX - offset.left - ringWidth;
           y = e.pageY - offset.top - this$.offsetY - ringWidth;
-          if (this$.hsvTriangle.hitTest(x, y)) {
-            return console.log('hit');
-          }
+          return this$.hsvTriangle.hitTest(x, y);
         },
         mousemove: function(e){
           throw Error('unimplemented');
@@ -347,13 +353,19 @@
           return x$;
         }
       };
-      z1$ = $canvas = $(this.domElement);
-      z1$.mousedown(ring.mousedown);
-      z1$.mousedown(triangle.mousedown);
+      z$ = $canvas = $(this.domElement);
+      z$.mousedown(ring.mousedown);
+      z$.mousedown(triangle.mousedown);
     }
     prototype.update = function(){
       var ringWidth, x$, ctx, rad, r, x, y, y$;
       ringWidth = this.radius.outer - this.radius.inner;
+      if (this.hueRing.dirty) {
+        this.hueRing.paint();
+      }
+      if (this.hsvTriangle.dirty) {
+        this.hsvTriangle.paint();
+      }
       x$ = ctx = superclass.prototype.update.call(this);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
       x$.drawImage(this.hsvTriangle.domElement, ringWidth, ringWidth + this.offsetY);
