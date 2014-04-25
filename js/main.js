@@ -254,14 +254,22 @@
       return this.pointS = vec2.fromValues(this.radius + this.radius * Math.cos(r), this.radius + this.radius * Math.sin(r));
     };
     prototype.SVFromPosition = function(x, y){
-      var p, t;
+      var p, t, s, v;
       p = vec2.fromValues(x, y);
       vec2.transformMat2d(p, p, this.matrix);
       vec2.subtract(p, p, this.pointS);
       t = Math.sqrt3 * p[1] + p[0];
-      return [2 * p[0] / t, t / 3 / this.radius];
+      s = 2 * p[0] / t;
+      v = t / 3 / this.radius;
+      s = s < 0
+        ? 0
+        : s >= 1 ? 1 : s;
+      v = v < 0
+        ? 0
+        : v >= 1 ? 1 : v;
+      return [s, v];
     };
-    prototype.PositionFromSV = function(s, v){
+    prototype.positionFromSV = function(s, v){
       var t0, t1, p, m;
       t0 = v * this.radius;
       t1 = s / 2 * t0;
@@ -386,25 +394,16 @@
             return x$;
           }
         },
-        approximate: function(x, y){
-          var ref$, s, v, x$, r;
-          ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
-          if ((0 <= s && s < 1) && (0 <= v && v < 1)) {
-            x$ = this$.prev;
-            x$.s = s;
-            x$.v = v;
-            return this$.color = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
-          } else {
-            r = this$.hsvTriangle.radius;
-            return triangle.approximate(r + (x - r) * triangle.ratio, r + (y - r) * triangle.ratio);
-          }
-        },
         mousemove: function(e){
-          var offset, x, y;
+          var offset, x, y, ref$, s, v;
           offset = $canvas.offset();
           x = e.pageX - offset.left - this$.ringWidth;
           y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
-          return triangle.approximate(x, y);
+          ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
+          ref$ = this$.prev;
+          ref$.s = s;
+          ref$.v = v;
+          return this$.color = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
         },
         mouseup: function(){
           var x$;
@@ -442,7 +441,7 @@
       y$.strokeStyle = 'white';
       y$.lineWidth = this.ringWidth;
       y$.stroke();
-      ref$ = this.hsvTriangle.PositionFromSV(this.prev.s, this.prev.v), x = ref$[0], y = ref$[1];
+      ref$ = this.hsvTriangle.positionFromSV(this.prev.s, this.prev.v), x = ref$[0], y = ref$[1];
       z$ = ctx;
       z$.beginPath();
       z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);

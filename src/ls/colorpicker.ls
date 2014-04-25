@@ -99,8 +99,12 @@ class HSVTriangle extends Canvas
     vec2.subtract p, p, @point-s
     # end of rotate
     t = Math.sqrt3 * p.1 + p.0
-    [2 * p.0 / t, t / 3 / @radius]
-  PositionFromSV: (s, v) ->
+    s = 2 * p.0 / t
+    v = t / 3 / @radius
+    s = if s < 0 then 0 else if s >= 1 then 1 else s
+    v = if v < 0 then 0 else if v >= 1 then 1 else v
+    [s, v]
+  positionFromSV: (s, v) ->
     t0 = v * @radius
     t1 = s / 2 * t0
     p = vec2.fromValues 3 * t1, Math.sqrt3 * (t0 - t1)
@@ -201,23 +205,13 @@ class ColorpickerView extends View
           $doc
             ..mousemove triangle.mousemove
             ..mouseup   triangle.mouseup
-      approximate: (x, y) ~>
-        [s, v] = @hsv-triangle.SVFromPosition x, y
-        if 0 <= s < 1 and 0 <= v < 1
-          @prev
-            ..s = s
-            ..v = v
-          @color = string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
-        else
-          r = @hsv-triangle.radius
-          triangle.approximate do
-            r + (x - r) * triangle.ratio
-            r + (y - r) * triangle.ratio
       mousemove: (e) ~>
         offset = $canvas.offset!
         x = e.pageX - offset.left - @ring-width
         y = e.pageY - offset.top - @offset-y - @ring-width
-        triangle.approximate x, y
+        [s, v] = @hsv-triangle.SVFromPosition x, y
+        @prev <<< {s, v}
+        @color = string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -244,7 +238,7 @@ class ColorpickerView extends View
       ..strokeStyle = \white
       ..lineWidth = @ring-width
       ..stroke!
-    [x, y] = @hsv-triangle.PositionFromSV @prev.s, @prev.v
+    [x, y] = @hsv-triangle.positionFromSV @prev.s, @prev.v
     ctx
       ..beginPath!
       ..arc x + @ring-width, y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2
