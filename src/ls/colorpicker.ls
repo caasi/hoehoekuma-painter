@@ -32,7 +32,11 @@ class HueRing extends Canvas
     center =
       x: @outer-radius
       y: @outer-radius
+    ##
     # draw hue gradient
+    ##
+    # here is another way to draw the wheel by using arc with a little trick:
+    #   http://stackoverflow.com/questions/18265804/building-a-color-wheel-in-html5
     ctx = super!
     image-data = ctx.getImageData do
       0, 0
