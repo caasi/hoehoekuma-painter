@@ -233,19 +233,21 @@ class ColorpickerView extends View
       ..fillRect 0, 0, @domElement.width, @domElement.height
       ..drawImage @hue-ring.domElement, 0, @offset-y
       ..drawImage @hsv-triangle.domElement, @ring-width, @ring-width + @offset-y
-    rad = glMatrix.toRadian(@hsv-triangle.hue) + @hue-ring.rotation
+    rad = Math.toRadian(@hsv-triangle.hue) + @hue-ring.rotation
+    gap = Math.toRadian 1
     r = (@hue-ring.outer-radius + @hue-ring.inner-radius) / 2
     x = @hue-ring.outer-radius + r * Math.cos rad
     y = @offset-y + @hue-ring.outer-radius + r * Math.sin rad
     ctx
       ..beginPath!
-      ..arc x, y, @ring-width / 4, 0, Math.PI * 2
+      ..arc @domElement.width / 2, @domElement.height / 2, r, rad - gap, rad + gap
       ..strokeStyle = \white
-      ..lineWidth = @ring-width / 10
+      ..lineWidth = @ring-width
       ..stroke!
     [x, y] = @hsv-triangle.PositionFromSV @prev.s, @prev.v
     ctx
       ..beginPath!
       ..arc x + @ring-width, y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2
+      ..lineWidth = @ring-width / 10
       ..stroke!
 

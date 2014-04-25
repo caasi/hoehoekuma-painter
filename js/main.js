@@ -419,7 +419,7 @@
       z$.mousedown(triangle.mousedown);
     }
     prototype.update = function(){
-      var x$, ctx, rad, r, x, y, y$, ref$, z$;
+      var x$, ctx, rad, gap, r, x, y, y$, ref$, z$;
       if (this.hueRing.dirty) {
         this.hueRing.paint();
       }
@@ -431,20 +431,22 @@
       x$.fillRect(0, 0, this.domElement.width, this.domElement.height);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
       x$.drawImage(this.hsvTriangle.domElement, this.ringWidth, this.ringWidth + this.offsetY);
-      rad = glMatrix.toRadian(this.hsvTriangle.hue) + this.hueRing.rotation;
+      rad = Math.toRadian(this.hsvTriangle.hue) + this.hueRing.rotation;
+      gap = Math.toRadian(1);
       r = (this.hueRing.outerRadius + this.hueRing.innerRadius) / 2;
       x = this.hueRing.outerRadius + r * Math.cos(rad);
       y = this.offsetY + this.hueRing.outerRadius + r * Math.sin(rad);
       y$ = ctx;
       y$.beginPath();
-      y$.arc(x, y, this.ringWidth / 4, 0, Math.PI * 2);
+      y$.arc(this.domElement.width / 2, this.domElement.height / 2, r, rad - gap, rad + gap);
       y$.strokeStyle = 'white';
-      y$.lineWidth = this.ringWidth / 10;
+      y$.lineWidth = this.ringWidth;
       y$.stroke();
       ref$ = this.hsvTriangle.PositionFromSV(this.prev.s, this.prev.v), x = ref$[0], y = ref$[1];
       z$ = ctx;
       z$.beginPath();
       z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
+      z$.lineWidth = this.ringWidth / 10;
       z$.stroke();
       return z$;
     };
