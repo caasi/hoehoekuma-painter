@@ -40,10 +40,10 @@ class HueRing extends Canvas
     for i from 0 til @domElement.width * @domElement.height
       x = ~~(i % @domElement.width)
       y = ~~(i / @domElement.width)
-      rgb   = rgb-from-hsv @hueFromPosition(x, y), 1, 1
-      image-data.data[i * 4 + 0] = ~~rgb.0
-      image-data.data[i * 4 + 1] = ~~rgb.1
-      image-data.data[i * 4 + 2] = ~~rgb.2
+      rgb = rgb-from-hsv @hueFromPosition(x, y), 1, 1
+      image-data.data[i * 4 + 0] = rgb.0
+      image-data.data[i * 4 + 1] = rgb.1
+      image-data.data[i * 4 + 2] = rgb.2
       image-data.data[i * 4 + 3] = 0xff
     return ctx if @debug
     ##
@@ -88,21 +88,19 @@ class HSVTriangle extends Canvas
     r = Math.PI * 4 / 3
     @point-s = vec2.fromValues @radius + @radius * Math.cos(r), @radius + @radius * Math.sin(r)
   # what a mess
-  SVRFromPosition: (x, y) ->
+  SVFromPosition: (x, y) ->
+    # rotate
     p = vec2.fromValues x, y
     vec2.transformMat2d p, p, @matrix
     vec2.subtract p, p, @point-s
-    rad = Math.atan2 p.0, p.1
-    s = p.0 / Math.cos Math.PI / 6
-    s /= p.1 + s * Math.sin Math.PI / 6
-    v = p.1 / Math.cos(rad) * Math.sin(rad + Math.PI / 3)
-    v /= @radius * 3 / 2
-    [s, v, rad]
-  PositionFromSVR: (s, v, rad) ->
-    y = v * @radius * 3 / 2
-    y = y * Math.cos(rad) / Math.sin(rad + Math.PI / 3)
-    x = y * Math.tan rad
-    p = vec2.fromValues x, y
+    # end of rotate
+    t = Math.sqrt3 * p.1 + p.0
+    [2 * p.0 / t, t / 3 / @radius]
+  PositionFromSV: (s, v) ->
+    t0 = v * @radius
+    t1 = s / 2 * t0
+    p = vec2.fromValues 3 * t1, Math.sqrt3 * (t0 - t1)
+    #rotate
     vec2.add p, p, @point-s
     m = mat2d.create!
     m = mat2d.invert m, @matrix
@@ -119,7 +117,7 @@ class HSVTriangle extends Canvas
       0, 0
       @domElement.width, @domElement.height
     for i from 0 til @domElement.width * @domElement.height
-      [s, v] = @SVRFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
+      [s, v] = @SVFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
       #continue unless 0 <= s < 1 and 0 <= v < 1
       rgb = rgb-from-hsv @hue, s, v
       image-data.data[i * 4 + 0] = rgb.0
@@ -153,16 +151,15 @@ class ColorpickerView extends View
       inner: @data.sprite.width * 3 - @ring-width
     @hue-ring = new HueRing @radius.outer, @radius.inner
     @hsv-triangle = new HSVTriangle @radius.inner
-      ..rotation = @hue-ring.rotation + glMatrix.toRadian @hsv-triangle.hue
+      ..rotation = @hue-ring.rotation + Math.toRadian @hsv-triangle.hue
     @domElement
       ..width = @data.sprite.width * 6
       ..height = @data.sprite.height * 6
     @offset-y = (@domElement.height - @domElement.width) / 2
-    @color =
-      s: 1
+    @prev =
+      s: 0
       v: 1
-      rad: 0
-      rgb: \white
+    @color = \white
     # interaction
     $doc = $ document
     ring =
@@ -182,14 +179,15 @@ class ColorpickerView extends View
         hue = @hue-ring.hueFromPosition x, y
         @hsv-triangle = new HSVTriangle @radius.inner
           ..hue = hue
-          ..rotation = @hue-ring.rotation + glMatrix.toRadian hue
+          ..rotation = @hue-ring.rotation + Math.toRadian hue
           ..dirty = true
-        @color.rgb = string-from-rgb rgb-from-hsv hue, @color.s, @color.v
+        @color = string-from-rgb rgb-from-hsv hue, @prev.s, @prev.v
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
           ..off \mouseup   ring.mouseup
     triangle =
+      ratio: 255 / 256
       mousedown: (e) ~>
         offset = $canvas.offset!
         x = e.pageX - offset.left - @ring-width
@@ -199,17 +197,23 @@ class ColorpickerView extends View
           $doc
             ..mousemove triangle.mousemove
             ..mouseup   triangle.mouseup
+      approximate: (x, y) ~>
+        [s, v] = @hsv-triangle.SVFromPosition x, y
+        if 0 <= s < 1 and 0 <= v < 1
+          @prev
+            ..s = s
+            ..v = v
+          @color = string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
+        else
+          r = @hsv-triangle.radius
+          triangle.approximate do
+            r + (x - r) * triangle.ratio
+            r + (y - r) * triangle.ratio
       mousemove: (e) ~>
         offset = $canvas.offset!
         x = e.pageX - offset.left - @ring-width
         y = e.pageY - offset.top - @offset-y - @ring-width
-        [s, v, rad] = @hsv-triangle.SVRFromPosition x, y
-        if 0 <= s < 1 and 0 <= v < 1
-          @color
-            ..s = s
-            ..v = v
-            ..rad = rad
-            ..rgb = string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
+        triangle.approximate x, y
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -221,6 +225,8 @@ class ColorpickerView extends View
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
     ctx = super!
+      ..fillStyle = @color
+      ..fillRect 0, 0, @domElement.width, @domElement.height
       ..drawImage @hue-ring.domElement, 0, @offset-y
       ..drawImage @hsv-triangle.domElement, @ring-width, @ring-width + @offset-y
     rad = glMatrix.toRadian(@hsv-triangle.hue) + @hue-ring.rotation
@@ -233,7 +239,7 @@ class ColorpickerView extends View
       ..strokeStyle = \white
       ..lineWidth = @ring-width / 10
       ..stroke!
-    [x, y] = @hsv-triangle.PositionFromSVR @color.s, @color.v, @color.rad
+    [x, y] = @hsv-triangle.PositionFromSV @prev.s, @prev.v
     ctx
       ..beginPath!
       ..arc x + @ring-width, y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2

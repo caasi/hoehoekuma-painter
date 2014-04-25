@@ -1,3 +1,9 @@
+a = Math.PI / 180
+Math
+  ..sqrt3 = Math.sqrt 3
+  ..toRadian = -> it * a
+  ..toDegree = -> it / a
+
 ##
 # RGB from HSV
 # http://aventures-logicielles.blogspot.tw/2010/11/playing-with-hsv-colors-and-html5.html

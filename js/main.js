@@ -1,5 +1,5 @@
 (function(){
-  var data, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView, views, selector, painter, preview, colorpicker;
+  var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView, views, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
     mask: void 8,
@@ -8,6 +8,15 @@
       height: 32
     },
     relations: [void 8, void 8, void 8, 1, void 8, void 8, void 8, 5, void 8, void 8, void 8, 9, void 8, void 8, void 8, 13, void 8]
+  };
+  a = Math.PI / 180;
+  x$ = Math;
+  x$.sqrt3 = Math.sqrt(3);
+  x$.toRadian = function(it){
+    return it * a;
+  };
+  x$.toDegree = function(it){
+    return it / a;
   };
   rgbFromHsv = function(h, s, v){
     var c, x, m, rgb, i$, len$, results$ = [];
@@ -194,9 +203,9 @@
         x = ~~(i % this.domElement.width);
         y = ~~(i / this.domElement.width);
         rgb = rgbFromHsv(this.hueFromPosition(x, y), 1, 1);
-        imageData.data[i * 4 + 0] = ~~rgb[0];
-        imageData.data[i * 4 + 1] = ~~rgb[1];
-        imageData.data[i * 4 + 2] = ~~rgb[2];
+        imageData.data[i * 4 + 0] = rgb[0];
+        imageData.data[i * 4 + 1] = rgb[1];
+        imageData.data[i * 4 + 2] = rgb[2];
         imageData.data[i * 4 + 3] = 0xff;
       }
       if (this.debug) {
@@ -244,24 +253,19 @@
       r = Math.PI * 4 / 3;
       return this.pointS = vec2.fromValues(this.radius + this.radius * Math.cos(r), this.radius + this.radius * Math.sin(r));
     };
-    prototype.SVRFromPosition = function(x, y){
-      var p, rad, s, v;
+    prototype.SVFromPosition = function(x, y){
+      var p, t;
       p = vec2.fromValues(x, y);
       vec2.transformMat2d(p, p, this.matrix);
       vec2.subtract(p, p, this.pointS);
-      rad = Math.atan2(p[0], p[1]);
-      s = p[0] / Math.cos(Math.PI / 6);
-      s /= p[1] + s * Math.sin(Math.PI / 6);
-      v = p[1] / Math.cos(rad) * Math.sin(rad + Math.PI / 3);
-      v /= this.radius * 3 / 2;
-      return [s, v, rad];
+      t = Math.sqrt3 * p[1] + p[0];
+      return [2 * p[0] / t, t / 3 / this.radius];
     };
-    prototype.PositionFromSVR = function(s, v, rad){
-      var y, x, p, m;
-      y = v * this.radius * 3 / 2;
-      y = y * Math.cos(rad) / Math.sin(rad + Math.PI / 3);
-      x = y * Math.tan(rad);
-      p = vec2.fromValues(x, y);
+    prototype.PositionFromSV = function(s, v){
+      var t0, t1, p, m;
+      t0 = v * this.radius;
+      t1 = s / 2 * t0;
+      p = vec2.fromValues(3 * t1, Math.sqrt3 * (t0 - t1));
       vec2.add(p, p, this.pointS);
       m = mat2d.create();
       m = mat2d.invert(m, this.matrix);
@@ -279,7 +283,7 @@
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
       for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
         i = i$;
-        ref$ = this.SVRFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
+        ref$ = this.SVFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
         rgb = rgbFromHsv(this.hue, s, v);
         imageData.data[i * 4 + 0] = rgb[0];
         imageData.data[i * 4 + 1] = rgb[1];
@@ -322,17 +326,16 @@
       };
       this.hueRing = new HueRing(this.radius.outer, this.radius.inner);
       x$ = this.hsvTriangle = new HSVTriangle(this.radius.inner);
-      x$.rotation = this.hueRing.rotation + glMatrix.toRadian(this.hsvTriangle.hue);
+      x$.rotation = this.hueRing.rotation + Math.toRadian(this.hsvTriangle.hue);
       y$ = this.domElement;
       y$.width = this.data.sprite.width * 6;
       y$.height = this.data.sprite.height * 6;
       this.offsetY = (this.domElement.height - this.domElement.width) / 2;
-      this.color = {
-        s: 1,
-        v: 1,
-        rad: 0,
-        rgb: 'white'
+      this.prev = {
+        s: 0,
+        v: 1
       };
+      this.color = 'white';
       $doc = $(document);
       ring = {
         mousedown: function(e){
@@ -356,9 +359,9 @@
           hue = this$.hueRing.hueFromPosition(x, y);
           x$ = this$.hsvTriangle = new HSVTriangle(this$.radius.inner);
           x$.hue = hue;
-          x$.rotation = this$.hueRing.rotation + glMatrix.toRadian(hue);
+          x$.rotation = this$.hueRing.rotation + Math.toRadian(hue);
           x$.dirty = true;
-          return this$.color.rgb = stringFromRgb(rgbFromHsv(hue, this$.color.s, this$.color.v));
+          return this$.color = stringFromRgb(rgbFromHsv(hue, this$.prev.s, this$.prev.v));
         },
         mouseup: function(){
           var x$;
@@ -369,6 +372,7 @@
         }
       };
       triangle = {
+        ratio: 255 / 256,
         mousedown: function(e){
           var offset, x, y, x$;
           offset = $canvas.offset();
@@ -382,20 +386,25 @@
             return x$;
           }
         },
+        approximate: function(x, y){
+          var ref$, s, v, x$, r;
+          ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
+          if ((0 <= s && s < 1) && (0 <= v && v < 1)) {
+            x$ = this$.prev;
+            x$.s = s;
+            x$.v = v;
+            return this$.color = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
+          } else {
+            r = this$.hsvTriangle.radius;
+            return triangle.approximate(r + (x - r) * triangle.ratio, r + (y - r) * triangle.ratio);
+          }
+        },
         mousemove: function(e){
-          var offset, x, y, ref$, s, v, rad, x$;
+          var offset, x, y;
           offset = $canvas.offset();
           x = e.pageX - offset.left - this$.ringWidth;
           y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
-          ref$ = this$.hsvTriangle.SVRFromPosition(x, y), s = ref$[0], v = ref$[1], rad = ref$[2];
-          if ((0 <= s && s < 1) && (0 <= v && v < 1)) {
-            x$ = this$.color;
-            x$.s = s;
-            x$.v = v;
-            x$.rad = rad;
-            x$.rgb = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
-            return x$;
-          }
+          return triangle.approximate(x, y);
         },
         mouseup: function(){
           var x$;
@@ -418,6 +427,8 @@
         this.hsvTriangle.paint();
       }
       x$ = ctx = superclass.prototype.update.call(this);
+      x$.fillStyle = this.color;
+      x$.fillRect(0, 0, this.domElement.width, this.domElement.height);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
       x$.drawImage(this.hsvTriangle.domElement, this.ringWidth, this.ringWidth + this.offsetY);
       rad = glMatrix.toRadian(this.hsvTriangle.hue) + this.hueRing.rotation;
@@ -430,7 +441,7 @@
       y$.strokeStyle = 'white';
       y$.lineWidth = this.ringWidth / 10;
       y$.stroke();
-      ref$ = this.hsvTriangle.PositionFromSVR(this.color.s, this.color.v, this.color.rad), x = ref$[0], y = ref$[1];
+      ref$ = this.hsvTriangle.PositionFromSV(this.prev.s, this.prev.v), x = ref$[0], y = ref$[1];
       z$ = ctx;
       z$.beginPath();
       z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
