@@ -7,7 +7,10 @@
       width: 24,
       height: 32
     },
-    relations: [void 8, void 8, void 8, 1, void 8, void 8, void 8, 5, void 8, void 8, void 8, 9, void 8, void 8, void 8, 13, void 8]
+    relations: [void 8, void 8, void 8, 1, void 8, void 8, void 8, 5, void 8, void 8, void 8, 9, void 8, void 8, void 8, 13, void 8],
+    speed: 0.25,
+    duration: 2,
+    animations: [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], [16, 1]]
   };
   a = Math.PI / 180;
   x$ = Math;
@@ -156,7 +159,7 @@
       x$ = superclass.prototype.update.call(this);
       x$.drawImage(DeusExMachina.image, 0, 0);
       x$.globalCompositeOperation = 'destination-over';
-      x$.fillStyle = 'yellow';
+      x$.fillStyle = '#0f0';
       x$.fillRect(DeusExMachina.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height);
       return x$;
     };
@@ -223,9 +226,29 @@
   PreviewView = (function(superclass){
     var prototype = extend$((import$(PreviewView, superclass).displayName = 'PreviewView', PreviewView), superclass).prototype, constructor = PreviewView;
     function PreviewView(data){
+      var this$ = this;
       PreviewView.superclass.call(this, data);
       this.scale = 6;
+      this.animation = 0;
+      this.frame = 0;
+      setInterval(function(){
+        ++this$.animation;
+        if (!(this$.animation < this$.data.animations.length)) {
+          this$.animation = 0;
+        }
+        return this$.frame = 0;
+      }, this.data.duration * 1000);
     }
+    prototype.update = function(){
+      var animation;
+      animation = this.data.animations[this.animation];
+      this.index = animation[~~this.frame];
+      this.frame += this.data.speed;
+      if (!(this.frame < animation.length)) {
+        this.frame = 0;
+      }
+      return superclass.prototype.update.call(this);
+    };
     return PreviewView;
   }(ScalableView));
   Canvas = (function(){

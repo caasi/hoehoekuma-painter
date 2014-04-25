@@ -55,7 +55,7 @@ class SelectorView extends View
     super!
       ..drawImage DeusExMachina.image, 0, 0
       ..globalCompositeOperation = \destination-over
-      ..fillStyle = \yellow
+      ..fillStyle = \#0f0
       ..fillRect do
         DeusExMachina.index * @data.sprite.width, 0
         @data.sprite.width, @data.sprite.height
@@ -110,3 +110,18 @@ class PreviewView extends ScalableView
   (data) ->
     super data
     @scale = 6
+    @animation = 0
+    @frame = 0
+    setInterval ~>
+      ++@animation
+      unless @animation < @data.animations.length
+        @animation = 0
+      @frame = 0
+    , @data.duration * 1000
+  update: ->
+    animation = @data.animations[@animation]
+    @index = animation[~~@frame]
+    @frame += @data.speed
+    unless @frame < animation.length
+      @frame = 0
+    super!

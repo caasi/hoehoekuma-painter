@@ -89,7 +89,14 @@ td {
 a img {
   border: none;
 }
+body {
+  background-color: #ccc;
+}
+.ui.inverted.menu {
+  margin-bottom: 0;
+}
 #container {
+  background-color: #fff;
   position: relative;
   width: 552px;
   height: 576px;
