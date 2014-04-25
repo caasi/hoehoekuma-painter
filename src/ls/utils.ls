@@ -39,5 +39,5 @@ class ImageLoader
   get: (path) ->
     @images[path]
 
-image-manager = new ImageLoader [data.image]
+image-manager = new ImageLoader [data.image, data.mask]
 

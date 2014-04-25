@@ -126,7 +126,3 @@ body {
   top: 192px;
   right: 0;
 }
-#container #colorpicker canvas {
-  -webkit-border-radius: 10px;
-  border-radius: 10px;
-}

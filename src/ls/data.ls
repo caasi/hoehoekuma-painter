@@ -1,6 +1,6 @@
 data =
   image: 'img/kuma.png'
-  mask: void
+  mask:  'img/mask.png'
   sprite:
     width:  24
     height: 32

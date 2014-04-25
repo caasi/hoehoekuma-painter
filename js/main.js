@@ -2,7 +2,7 @@
   var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, DeusExMachina, SpriteSheet, SelectorView, ScalableView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
-    mask: void 8,
+    mask: 'img/mask.png',
     sprite: {
       width: 24,
       height: 32
@@ -81,7 +81,7 @@
     };
     return ImageLoader;
   }());
-  imageManager = new ImageLoader([data.image]);
+  imageManager = new ImageLoader([data.image, data.mask]);
   View = (function(){
     View.displayName = 'View';
     var prototype = View.prototype, constructor = View;
@@ -104,28 +104,43 @@
   DeusExMachina = {
     index: 0,
     color: [0xff, 0xff, 0xff],
-    spritesheet: []
+    image: void 8,
+    mask: void 8,
+    spritesheet: [],
+    masksheet: []
   };
   SpriteSheet = (function(superclass){
     var prototype = extend$((import$(SpriteSheet, superclass).displayName = 'SpriteSheet', SpriteSheet), superclass).prototype, constructor = SpriteSheet;
     function SpriteSheet(data){
-      var image, x$, y$, ctx, i, ref$, relation;
+      var image, imageMask, x$, y$, z$, ctx, z1$, ctxMask, getImageData, i, ref$, relation, args, z2$;
       SpriteSheet.superclass.call(this, data);
       image = imageManager.get(this.data.image);
+      imageMask = imageManager.get(this.data.mask);
       x$ = this.domElement;
       x$.width = this.data.sprite.width * 17;
       x$.height = this.data.sprite.height;
-      y$ = ctx = this.domElement.getContext('2d');
-      y$.drawImage(image, 0, 0);
+      y$ = this.maskElement = document.createElement('canvas');
+      y$.width = this.data.sprite.width * 17;
+      y$.height = this.data.sprite.height;
+      z$ = ctx = this.domElement.getContext('2d');
+      z$.drawImage(image, 0, 0);
+      z1$ = ctxMask = this.maskElement.getContext('2d');
+      z1$.drawImage(imageMask, 0, 0);
+      getImageData = CanvasRenderingContext2D.prototype.getImageData;
       for (i in ref$ = this.data.relations) {
         relation = ref$[i];
         i = +i;
         if (relation === void 8) {
-          DeusExMachina.spritesheet[i] = ctx.getImageData(i * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height);
+          args = [i * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height];
+          z2$ = DeusExMachina;
+          z2$.spritesheet[i] = getImageData.apply(ctx, args);
+          z2$.masksheet[i] = getImageData.apply(ctxMask, args);
         } else {
           DeusExMachina.spritesheet[i] = DeusExMachina.spritesheet[relation];
+          DeusExMachina.masksheet[i] = DeusExMachina.masksheet[relation];
         }
         DeusExMachina.image = this.domElement;
+        DeusExMachina.mask = this.maskElement;
       }
     }
     prototype.update = function(){
@@ -171,15 +186,36 @@
       ScalableView.superclass.call(this, data);
       this.index = 0;
       this.scale = 1;
+      this.scaleChanged = false;
+      this.bgElement = document.createElement('canvas');
     }
     prototype.update = function(){
-      var x$, y$;
-      x$ = this.domElement;
-      x$.width = this.data.sprite.width * this.scale;
-      x$.height = this.data.sprite.height * this.scale;
-      y$ = superclass.prototype.update.call(this);
-      y$.drawImage(DeusExMachina.image, this.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * this.scale, this.data.sprite.height * this.scale);
-      return y$;
+      var x$, ctx, width, i$, to$, y, j$, to1$, x, color, y$, z$, z1$;
+      if (this.scaleChanged) {
+        this.scaleChanged = false;
+        x$ = this.bgElement;
+        x$.width = this.data.sprite.width * this.scale;
+        x$.height = this.data.sprite.height * this.scale;
+        ctx = this.bgElement.getContext('2d');
+        width = this.scale !== 1 ? this.scale : 1;
+        for (i$ = 0, to$ = this.bgElement.height / width; i$ < to$; ++i$) {
+          y = i$;
+          for (j$ = 0, to1$ = this.bgElement.width / width; j$ < to1$; ++j$) {
+            x = j$;
+            color = (x + y) % 2 === 0 ? '#999' : '#666';
+            y$ = ctx;
+            y$.fillStyle = color;
+            y$.fillRect(x * width, y * width, width, width);
+          }
+        }
+      }
+      z$ = this.domElement;
+      z$.width = this.data.sprite.width * this.scale;
+      z$.height = this.data.sprite.height * this.scale;
+      z1$ = superclass.prototype.update.call(this);
+      z1$.drawImage(this.bgElement, 0, 0);
+      z1$.drawImage(DeusExMachina.image, this.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * this.scale, this.data.sprite.height * this.scale);
+      return z1$;
     };
     return ScalableView;
   }(View));
@@ -189,36 +225,37 @@
       var onDraw, x$, $e, this$ = this;
       PainterView.superclass.call(this, data);
       this.scale = 17;
-      this.x = 0;
-      this.y = 0;
+      this.scaleChanged = true;
+      this.x = -1;
+      this.y = -1;
       onDraw = function(e){
-        var color, data, i;
+        var color, mask, i, data;
         color = DeusExMachina.color;
-        data = DeusExMachina.spritesheet[this$.index].data;
+        mask = DeusExMachina.masksheet[this$.index].data;
         i = ~~(this$.y * this$.data.sprite.width + this$.x);
-        data[i * 4 + 0] = color[0];
-        data[i * 4 + 1] = color[1];
-        data[i * 4 + 2] = color[2];
-        return data[i * 4 + 3] = 0xff;
+        if (mask[i * 4 + 3] !== 0x00) {
+          data = DeusExMachina.spritesheet[this$.index].data;
+          data[i * 4 + 0] = color[0];
+          data[i * 4 + 1] = color[1];
+          data[i * 4 + 2] = color[2];
+          return data[i * 4 + 3] = 0xff;
+        }
       };
       x$ = $e = $(this.domElement);
       x$.mousedown(function(e){
-        var x$;
         onDraw(e);
-        x$ = $e;
-        x$.mousemove(onDraw);
-        return x$;
+        return $e.mousemove(onDraw);
       });
-      x$.mousemove(function(e){
+      x$.mouseup(function(){
+        return $e.off('mousemove', onDraw);
+      });
+      $(document).mousemove(function(e){
         var ref$;
         ref$ = $e.offset(), this$.x = ref$.left, this$.y = ref$.top;
         this$.x = e.pageX - this$.x;
         this$.y = e.pageY - this$.y;
         this$.x = ~~(this$.x / this$.scale);
         return this$.y = ~~(this$.y / this$.scale);
-      });
-      x$.mouseup(function(){
-        return $e.off('mousemove', onDraw);
       });
     }
     prototype.update = function(){
@@ -237,6 +274,7 @@
       var this$ = this;
       PreviewView.superclass.call(this, data);
       this.scale = 6;
+      this.scaleChanged = true;
       this.animation = 0;
       this.frame = 0;
       setInterval(function(){
