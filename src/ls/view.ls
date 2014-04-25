@@ -9,42 +9,104 @@ class View
       ..imageSmoothingEnabled = false
       ..clearRect 0, 0, @domElement.width, @domElement.height
 
-class SelectorView extends View
+# lol fking global
+DeusExMachina =
+  index: 0
+  color: [0xff 0xff 0xff]
+  spritesheet: []
+
+class SpriteSheet extends View
   (data) ->
     super data
-    @index = 0
+    image = image-manager.get @data.image
     @domElement
       ..width = @data.sprite.width * 17
       ..height = @data.sprite.height
+    ctx = @domElement.getContext \2d
+      ..drawImage image, 0, 0
+    for i, relation of @data.relations
+      i = +i
+      if relation is void
+        DeusExMachina.spritesheet[i] =
+          ctx.getImageData do
+            i * @data.sprite.width
+            0
+            @data.sprite.width
+            @data.sprite.height
+      else
+        DeusExMachina.spritesheet[i] = DeusExMachina.spritesheet[relation]
+      DeusExMachina.image = @domElement
   update: ->
-    super!drawImage image-manager.get(@data.image), 0, 0
+    ctx = super!
+    for i, relation of @data.relations
+      ctx.putImageData DeusExMachina.spritesheet[i], +i * @data.sprite.width, 0
 
-class PainterView extends View
+class SelectorView extends View
+  (data) ->
+    super data
+    @domElement
+      ..width = @data.sprite.width * 17
+      ..height = @data.sprite.height
+    $e = $ @domElement
+      ..click (e) ~>
+        {left: x} = $e.offset!
+        DeusExMachina.index = ~~((e.pageX - x) / @data.sprite.width)
+  update: ->
+    super!
+      ..drawImage DeusExMachina.image, 0, 0
+      ..globalCompositeOperation = \destination-over
+      ..fillStyle = \yellow
+      ..fillRect do
+        DeusExMachina.index * @data.sprite.width, 0
+        @data.sprite.width, @data.sprite.height
+
+class ScalableView extends View
   (data) ->
     super data
     @index = 0
-    @domElement
-      ..width = @data.sprite.width * 17
-      ..height = @data.sprite.height * 17
+    @scale = 1
   update: ->
-    super!drawImage do
-      image-manager.get @data.image
-      @index * @data.sprite.width, 0
-      @data.sprite.width, @data.sprite.height
-      0, 0
-      @data.sprite.width * 17, @data.sprite.height * 17
+    @domElement
+      ..width = @data.sprite.width * @scale
+      ..height = @data.sprite.height * @scale
+    super!
+      ..drawImage do
+        DeusExMachina.image
+        @index * @data.sprite.width, 0
+        @data.sprite.width, @data.sprite.height
+        0, 0
+        @data.sprite.width * @scale, @data.sprite.height * @scale
 
-class PreviewView extends View
+class PainterView extends ScalableView
   (data) ->
     super data
-    @domElement
-      ..width = @data.sprite.width * 6
-      ..height = @data.sprite.height * 6
+    @index = 1
+    @scale = 17
+    on-draw = (e) ~>
+      {left: x, top: y} = $e.offset!
+      x = e.pageX - x
+      y = e.pageY - y
+      x = ~~(x / @scale)
+      y = ~~(y / @scale)
+      color = DeusExMachina.color
+      data = DeusExMachina.spritesheet[@index].data
+      i = ~~(y * @data.sprite.width + x)
+      data[i * 4 + 0] = color.0
+      data[i * 4 + 1] = color.1
+      data[i * 4 + 2] = color.2
+      data[i * 4 + 3] = 0xff
+    $e = $ @domElement
+      ..mousedown (e) ->
+        on-draw e
+        $e
+          ..mousemove on-draw
+      ..mouseup ->
+        $e.off \mousemove on-draw
   update: ->
-    super!drawImage do
-      image-manager.get @data.image
-      0, 0
-      @data.sprite.width, @data.sprite.height
-      0, 0
-      @data.sprite.width * 6, @data.sprite.height * 6
+    @index = DeusExMachina.index
+    super!
 
+class PreviewView extends ScalableView
+  (data) ->
+    super data
+    @scale = 6

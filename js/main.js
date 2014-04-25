@@ -1,5 +1,5 @@
 (function(){
-  var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SelectorView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView, views, selector, painter, preview, colorpicker;
+  var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, DeusExMachina, SpriteSheet, SelectorView, ScalableView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView, selector, painter, preview, colorpicker;
   data = {
     image: 'img/kuma.png',
     mask: void 8,
@@ -98,50 +98,136 @@
     };
     return View;
   }());
-  SelectorView = (function(superclass){
-    var prototype = extend$((import$(SelectorView, superclass).displayName = 'SelectorView', SelectorView), superclass).prototype, constructor = SelectorView;
-    function SelectorView(data){
-      var x$;
-      SelectorView.superclass.call(this, data);
-      this.index = 0;
+  DeusExMachina = {
+    index: 0,
+    color: [0xff, 0xff, 0xff],
+    spritesheet: []
+  };
+  SpriteSheet = (function(superclass){
+    var prototype = extend$((import$(SpriteSheet, superclass).displayName = 'SpriteSheet', SpriteSheet), superclass).prototype, constructor = SpriteSheet;
+    function SpriteSheet(data){
+      var image, x$, y$, ctx, i, ref$, relation;
+      SpriteSheet.superclass.call(this, data);
+      image = imageManager.get(this.data.image);
       x$ = this.domElement;
       x$.width = this.data.sprite.width * 17;
       x$.height = this.data.sprite.height;
+      y$ = ctx = this.domElement.getContext('2d');
+      y$.drawImage(image, 0, 0);
+      for (i in ref$ = this.data.relations) {
+        relation = ref$[i];
+        i = +i;
+        if (relation === void 8) {
+          DeusExMachina.spritesheet[i] = ctx.getImageData(i * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height);
+        } else {
+          DeusExMachina.spritesheet[i] = DeusExMachina.spritesheet[relation];
+        }
+        DeusExMachina.image = this.domElement;
+      }
     }
     prototype.update = function(){
-      return superclass.prototype.update.call(this).drawImage(imageManager.get(this.data.image), 0, 0);
+      var ctx, i, ref$, relation, results$ = [];
+      ctx = superclass.prototype.update.call(this);
+      for (i in ref$ = this.data.relations) {
+        relation = ref$[i];
+        results$.push(ctx.putImageData(DeusExMachina.spritesheet[i], +i * this.data.sprite.width, 0));
+      }
+      return results$;
+    };
+    return SpriteSheet;
+  }(View));
+  SelectorView = (function(superclass){
+    var prototype = extend$((import$(SelectorView, superclass).displayName = 'SelectorView', SelectorView), superclass).prototype, constructor = SelectorView;
+    function SelectorView(data){
+      var x$, y$, $e, this$ = this;
+      SelectorView.superclass.call(this, data);
+      x$ = this.domElement;
+      x$.width = this.data.sprite.width * 17;
+      x$.height = this.data.sprite.height;
+      y$ = $e = $(this.domElement);
+      y$.click(function(e){
+        var x;
+        x = $e.offset().left;
+        return DeusExMachina.index = ~~((e.pageX - x) / this$.data.sprite.width);
+      });
+    }
+    prototype.update = function(){
+      var x$;
+      x$ = superclass.prototype.update.call(this);
+      x$.drawImage(DeusExMachina.image, 0, 0);
+      x$.globalCompositeOperation = 'destination-over';
+      x$.fillStyle = 'yellow';
+      x$.fillRect(DeusExMachina.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height);
+      return x$;
     };
     return SelectorView;
+  }(View));
+  ScalableView = (function(superclass){
+    var prototype = extend$((import$(ScalableView, superclass).displayName = 'ScalableView', ScalableView), superclass).prototype, constructor = ScalableView;
+    function ScalableView(data){
+      ScalableView.superclass.call(this, data);
+      this.index = 0;
+      this.scale = 1;
+    }
+    prototype.update = function(){
+      var x$, y$;
+      x$ = this.domElement;
+      x$.width = this.data.sprite.width * this.scale;
+      x$.height = this.data.sprite.height * this.scale;
+      y$ = superclass.prototype.update.call(this);
+      y$.drawImage(DeusExMachina.image, this.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * this.scale, this.data.sprite.height * this.scale);
+      return y$;
+    };
+    return ScalableView;
   }(View));
   PainterView = (function(superclass){
     var prototype = extend$((import$(PainterView, superclass).displayName = 'PainterView', PainterView), superclass).prototype, constructor = PainterView;
     function PainterView(data){
-      var x$;
+      var onDraw, x$, $e, this$ = this;
       PainterView.superclass.call(this, data);
-      this.index = 0;
-      x$ = this.domElement;
-      x$.width = this.data.sprite.width * 17;
-      x$.height = this.data.sprite.height * 17;
+      this.index = 1;
+      this.scale = 17;
+      onDraw = function(e){
+        var ref$, x, y, color, data, i;
+        ref$ = $e.offset(), x = ref$.left, y = ref$.top;
+        x = e.pageX - x;
+        y = e.pageY - y;
+        x = ~~(x / this$.scale);
+        y = ~~(y / this$.scale);
+        color = DeusExMachina.color;
+        data = DeusExMachina.spritesheet[this$.index].data;
+        i = ~~(y * this$.data.sprite.width + x);
+        data[i * 4 + 0] = color[0];
+        data[i * 4 + 1] = color[1];
+        data[i * 4 + 2] = color[2];
+        return data[i * 4 + 3] = 0xff;
+      };
+      x$ = $e = $(this.domElement);
+      x$.mousedown(function(e){
+        var x$;
+        onDraw(e);
+        x$ = $e;
+        x$.mousemove(onDraw);
+        return x$;
+      });
+      x$.mouseup(function(){
+        return $e.off('mousemove', onDraw);
+      });
     }
     prototype.update = function(){
-      return superclass.prototype.update.call(this).drawImage(imageManager.get(this.data.image), this.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * 17, this.data.sprite.height * 17);
+      this.index = DeusExMachina.index;
+      return superclass.prototype.update.call(this);
     };
     return PainterView;
-  }(View));
+  }(ScalableView));
   PreviewView = (function(superclass){
     var prototype = extend$((import$(PreviewView, superclass).displayName = 'PreviewView', PreviewView), superclass).prototype, constructor = PreviewView;
     function PreviewView(data){
-      var x$;
       PreviewView.superclass.call(this, data);
-      x$ = this.domElement;
-      x$.width = this.data.sprite.width * 6;
-      x$.height = this.data.sprite.height * 6;
+      this.scale = 6;
     }
-    prototype.update = function(){
-      return superclass.prototype.update.call(this).drawImage(imageManager.get(this.data.image), 0, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * 6, this.data.sprite.height * 6);
-    };
     return PreviewView;
-  }(View));
+  }(ScalableView));
   Canvas = (function(){
     Canvas.displayName = 'Canvas';
     var prototype = Canvas.prototype, constructor = Canvas;
@@ -343,14 +429,14 @@
         s: 0,
         v: 1
       };
-      this.color = 'white';
+      this.color = [0xff, 0xff, 0xff];
       $doc = $(document);
       ring = {
         mousedown: function(e){
-          var offset, x, y, x$;
-          offset = $canvas.offset();
-          x = e.pageX - offset.left;
-          y = e.pageY - offset.top - this$.offsetY;
+          var ref$, x, y, x$;
+          ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
+          x = e.pageX - x;
+          y = e.pageY - y - this$.offsetY;
           if (this$.hueRing.hitTest(x, y)) {
             ring.mousemove(e);
             x$ = $doc;
@@ -360,16 +446,16 @@
           }
         },
         mousemove: function(e){
-          var offset, x, y, hue, x$;
-          offset = $canvas.offset();
-          x = e.pageX - offset.left;
-          y = e.pageY - offset.top - this$.offsetY;
+          var ref$, x, y, hue, x$;
+          ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
+          x = e.pageX - x;
+          y = e.pageY - y - this$.offsetY;
           hue = this$.hueRing.hueFromPosition(x, y);
           x$ = this$.hsvTriangle = new HSVTriangle(this$.radius.inner);
           x$.hue = hue;
           x$.rotation = this$.hueRing.rotation + Math.toRadian(hue);
           x$.dirty = true;
-          return this$.color = stringFromRgb(rgbFromHsv(hue, this$.prev.s, this$.prev.v));
+          return this$.color = rgbFromHsv(hue, this$.prev.s, this$.prev.v);
         },
         mouseup: function(){
           var x$;
@@ -382,10 +468,10 @@
       triangle = {
         ratio: 255 / 256,
         mousedown: function(e){
-          var offset, x, y, x$;
-          offset = $canvas.offset();
-          x = e.pageX - offset.left - this$.ringWidth;
-          y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
+          var ref$, x, y, x$;
+          ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
+          x = e.pageX - x - this$.ringWidth;
+          y = e.pageY - y - this$.offsetY - this$.ringWidth;
           if (this$.hsvTriangle.hitTest(x, y)) {
             triangle.mousemove(e);
             x$ = $doc;
@@ -395,15 +481,15 @@
           }
         },
         mousemove: function(e){
-          var offset, x, y, ref$, s, v;
-          offset = $canvas.offset();
-          x = e.pageX - offset.left - this$.ringWidth;
-          y = e.pageY - offset.top - this$.offsetY - this$.ringWidth;
+          var ref$, x, y, s, v;
+          ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
+          x = e.pageX - x - this$.ringWidth;
+          y = e.pageY - y - this$.offsetY - this$.ringWidth;
           ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
           ref$ = this$.prev;
           ref$.s = s;
           ref$.v = v;
-          return this$.color = stringFromRgb(rgbFromHsv(this$.hsvTriangle.hue, s, v));
+          return this$.color = rgbFromHsv(this$.hsvTriangle.hue, s, v);
         },
         mouseup: function(){
           var x$;
@@ -425,8 +511,9 @@
       if (this.hsvTriangle.dirty) {
         this.hsvTriangle.paint();
       }
+      DeusExMachina.color = this.color;
       x$ = ctx = superclass.prototype.update.call(this);
-      x$.fillStyle = this.color;
+      x$.fillStyle = stringFromRgb(this.color);
       x$.fillRect(0, 0, this.domElement.width, this.domElement.height);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
       x$.drawImage(this.hsvTriangle.domElement, this.ringWidth, this.ringWidth + this.offsetY);
@@ -451,21 +538,19 @@
     };
     return ColorpickerView;
   }(View));
-  views = [];
   selector = new SelectorView(data);
   $('#selector').append(selector.domElement);
-  views.push(selector);
   painter = new PainterView(data);
   $('#painter').append(painter.domElement);
-  views.push(painter);
   preview = new PreviewView(data);
   $('#previewer').append(preview.domElement);
-  views.push(preview);
   colorpicker = new ColorpickerView(data);
   $('#colorpicker').append(colorpicker.domElement);
-  views.push(colorpicker);
   imageManager.load(function(){
-    var update;
+    var views, spritesheet, update;
+    views = [];
+    spritesheet = new SpriteSheet(data);
+    views.push(spritesheet, selector, painter, preview, colorpicker);
     update = function(){
       var i$, ref$, len$, view;
       for (i$ = 0, len$ = (ref$ = views).length; i$ < len$; ++i$) {

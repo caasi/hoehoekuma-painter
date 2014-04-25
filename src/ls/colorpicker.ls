@@ -167,29 +167,29 @@ class ColorpickerView extends View
     @prev =
       s: 0
       v: 1
-    @color = \white
+    @color = [0xff 0xff 0xff]
     # interaction
     $doc = $ document
     ring =
       mousedown: (e) ~>
-        offset = $canvas.offset!
-        x = e.pageX - offset.left
-        y = e.pageY - offset.top - @offset-y
+        {left: x, top: y} = $canvas.offset!
+        x = e.pageX - x
+        y = e.pageY - y - @offset-y
         if @hue-ring.hitTest x, y
           ring.mousemove e
           $doc
             ..mousemove ring.mousemove
             ..mouseup   ring.mouseup
       mousemove: (e) ~>
-        offset = $canvas.offset!
-        x = e.pageX - offset.left
-        y = e.pageY - offset.top - @offset-y
+        {left: x, top: y} = $canvas.offset!
+        x = e.pageX - x
+        y = e.pageY - y - @offset-y
         hue = @hue-ring.hueFromPosition x, y
         @hsv-triangle = new HSVTriangle @radius.inner
           ..hue = hue
           ..rotation = @hue-ring.rotation + Math.toRadian hue
           ..dirty = true
-        @color = string-from-rgb rgb-from-hsv hue, @prev.s, @prev.v
+        @color = rgb-from-hsv hue, @prev.s, @prev.v
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
@@ -197,21 +197,21 @@ class ColorpickerView extends View
     triangle =
       ratio: 255 / 256
       mousedown: (e) ~>
-        offset = $canvas.offset!
-        x = e.pageX - offset.left - @ring-width
-        y = e.pageY - offset.top - @offset-y - @ring-width
+        {left: x, top: y} = $canvas.offset!
+        x = e.pageX - x - @ring-width
+        y = e.pageY - y - @offset-y - @ring-width
         if @hsv-triangle.hitTest x, y
           triangle.mousemove e
           $doc
             ..mousemove triangle.mousemove
             ..mouseup   triangle.mouseup
       mousemove: (e) ~>
-        offset = $canvas.offset!
-        x = e.pageX - offset.left - @ring-width
-        y = e.pageY - offset.top - @offset-y - @ring-width
+        {left: x, top: y} = $canvas.offset!
+        x = e.pageX - x - @ring-width
+        y = e.pageY - y - @offset-y - @ring-width
         [s, v] = @hsv-triangle.SVFromPosition x, y
         @prev <<< {s, v}
-        @color = string-from-rgb rgb-from-hsv @hsv-triangle.hue, s, v
+        @color = rgb-from-hsv @hsv-triangle.hue, s, v
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -222,8 +222,9 @@ class ColorpickerView extends View
   update: ->
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
+    DeusExMachina.color = @color
     ctx = super!
-      ..fillStyle = @color
+      ..fillStyle = string-from-rgb @color
       ..fillRect 0, 0, @domElement.width, @domElement.height
       ..drawImage @hue-ring.domElement, 0, @offset-y
       ..drawImage @hsv-triangle.domElement, @ring-width, @ring-width + @offset-y
