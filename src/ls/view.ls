@@ -1,5 +1,5 @@
-class View
-  (@data) ->
+class View extends Monologue
+  (@data, @source) ->
     @domElement = document.createElement \canvas
   update: ->
     @domElement.getContext \2d
@@ -9,20 +9,11 @@ class View
       ..imageSmoothingEnabled       = false
       ..clearRect 0, 0, @domElement.width, @domElement.height
 
-# lol fking global
-DeusExMachina =
-  index:       0
-  color:       [0xff 0xff 0xff]
-  image:       void
-  mask:        void
-  spritesheet: []
-  masksheet:   []
-
 class SpriteSheet extends View
   (data) ->
     super data
-    image      = image-manager.get @data.image
-    image-mask = image-manager.get @data.mask
+    image = image-manager.get @data.image
+    mask  = image-manager.get @data.mask
     @domElement
       ..width  = @data.sprite.width * 17
       ..height = @data.sprite.height
@@ -32,7 +23,9 @@ class SpriteSheet extends View
     ctx = @domElement.getContext \2d
       ..drawImage image, 0, 0
     ctx-mask = @maskElement.getContext \2d
-      ..drawImage image-mask, 0, 0
+      ..drawImage mask, 0, 0
+    @spritesheet = []
+    @masksheet = []
     getImageData = CanvasRenderingContext2D::getImageData
     for i, relation of @data.relations
       i = +i
@@ -42,41 +35,49 @@ class SpriteSheet extends View
             0
             @data.sprite.width
             @data.sprite.height
-        DeusExMachina
-          ..spritesheet[i] = getImageData.apply ctx, args
-          ..masksheet[i]   = getImageData.apply ctx-mask, args
+        @spritesheet[i] = getImageData.apply ctx, args
+        @masksheet[i]   = getImageData.apply ctx-mask, args
       else
-        DeusExMachina.spritesheet[i] = DeusExMachina.spritesheet[relation]
-        DeusExMachina.masksheet[i]   = DeusExMachina.masksheet[relation]
-      DeusExMachina.image = @domElement
-      DeusExMachina.mask  = @maskElement
+        @spritesheet[i] = @spritesheet[relation]
+        @masksheet[i]   = @masksheet[relation]
   update: ->
     ctx = super!
     for i, relation of @data.relations
-      ctx.putImageData DeusExMachina.spritesheet[i], +i * @data.sprite.width, 0
+      ctx.putImageData @spritesheet[i], +i * @data.sprite.width, 0
+  paint: (brush) ->
+    mask = @masksheet[brush.frame].data
+    i = ~~(brush.y * @data.sprite.width + brush.x)
+    if mask[i * 4 + 3] isnt 0x00
+      data = @spritesheet[brush.frame].data
+      data[i * 4 + 0] = brush.color.0
+      data[i * 4 + 1] = brush.color.1
+      data[i * 4 + 2] = brush.color.2
+      data[i * 4 + 3] = 0xff
 
 class SelectorView extends View
-  (data) ->
-    super data
+  (data, source) ->
+    super data, source
+    @index = 0
     @domElement
       ..width = @data.sprite.width * 17
       ..height = @data.sprite.height
     $e = $ @domElement
       ..click (e) ~>
         {left: x} = $e.offset!
-        DeusExMachina.index = ~~((e.pageX - x) / @data.sprite.width)
+        @index = ~~((e.pageX - x) / @data.sprite.width)
+        @emit 'index.changed' @index
   update: ->
     super!
-      ..drawImage DeusExMachina.image, 0, 0
+      ..drawImage @source, 0, 0
       ..globalCompositeOperation = \destination-over
       ..fillStyle = \#0f0
       ..fillRect do
-        DeusExMachina.index * @data.sprite.width, 0
+        @index * @data.sprite.width, 0
         @data.sprite.width, @data.sprite.height
 
 class ScalableView extends View
-  (data) ->
-    super data
+  (data, source) ->
+    super data, source
     @index = 0
     @scale = 1
     @scale-changed = false
@@ -101,29 +102,21 @@ class ScalableView extends View
     super!
       ..drawImage @bgElement, 0, 0
       ..drawImage do
-        DeusExMachina.image
+        @source
         @index * @data.sprite.width, 0
         @data.sprite.width, @data.sprite.height
         0, 0
         @data.sprite.width * @scale, @data.sprite.height * @scale
 
 class PainterView extends ScalableView
-  (data) ->
-    super data
+  (data, source) ->
+    super data, source
     @scale = 17
     @scale-changed = true
     @x = -1
     @y = -1
-    on-draw = (e) ~>
-      color = DeusExMachina.color
-      mask = DeusExMachina.masksheet[@index].data
-      i = ~~(@y * @data.sprite.width + @x)
-      if mask[i * 4 + 3] isnt 0x00
-        data = DeusExMachina.spritesheet[@index].data
-        data[i * 4 + 0] = color.0
-        data[i * 4 + 1] = color.1
-        data[i * 4 + 2] = color.2
-        data[i * 4 + 3] = 0xff
+    @color = [0xff 0xff 0xff]
+    on-draw = (e) ~> @emit 'painted' frame: @index, x: @x, y: @y, color: @color
     $e = $ @domElement
       ..mousedown (e) ->
         on-draw e
@@ -137,16 +130,15 @@ class PainterView extends ScalableView
       @x = ~~(@x / @scale)
       @y = ~~(@y / @scale)
   update: ->
-    @index = DeusExMachina.index
     super!
-      ..fillStyle = string-from-rgb DeusExMachina.color
+      ..fillStyle = string-from-rgb @color
       ..fillRect do
         @x * @scale, @y * @scale
         @scale, @scale
 
 class PreviewView extends ScalableView
-  (data) ->
-    super data
+  (data, source) ->
+    super data, source
     @scale = 6
     @scale-changed = true
     @animation = 0

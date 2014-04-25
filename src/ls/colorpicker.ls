@@ -190,6 +190,7 @@ class ColorpickerView extends View
           ..rotation = @hue-ring.rotation + Math.toRadian hue
           ..dirty = true
         @color = rgb-from-hsv hue, @prev.s, @prev.v
+        @emit 'color.changed' @color
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
@@ -212,6 +213,7 @@ class ColorpickerView extends View
         [s, v] = @hsv-triangle.SVFromPosition x, y
         @prev <<< {s, v}
         @color = rgb-from-hsv @hsv-triangle.hue, s, v
+        @emit 'color.changed' @color
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -222,7 +224,6 @@ class ColorpickerView extends View
   update: ->
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
-    DeusExMachina.color = @color
     ctx = super!
       ..fillStyle = string-from-rgb @color
       ..fillRect 0, 0, @domElement.width, @domElement.height

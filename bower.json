@@ -20,11 +20,18 @@
   "dependencies": {
     "jquery": "~2.1.0",
     "semantic-ui": "~0.15.5",
-    "gl-matrix": "~2.2.1"
+    "gl-matrix": "~2.2.1",
+    "monologue.js": "~0.1.4"
   },
   "overrides": {
     "semantic-ui": {
       "main": "build/packaged/**/*"
+    },
+    "underscore": {
+      "main": "underscore.js"
+    },
+    "monologue.js": {
+      "main": "lib/monologue.js"
     }
   }
 }
