@@ -80,17 +80,13 @@ class ScalableView extends View
 class PainterView extends ScalableView
   (data) ->
     super data
-    @index = 1
     @scale = 17
+    @x = 0
+    @y = 0
     on-draw = (e) ~>
-      {left: x, top: y} = $e.offset!
-      x = e.pageX - x
-      y = e.pageY - y
-      x = ~~(x / @scale)
-      y = ~~(y / @scale)
       color = DeusExMachina.color
       data = DeusExMachina.spritesheet[@index].data
-      i = ~~(y * @data.sprite.width + x)
+      i = ~~(@y * @data.sprite.width + @x)
       data[i * 4 + 0] = color.0
       data[i * 4 + 1] = color.1
       data[i * 4 + 2] = color.2
@@ -100,11 +96,21 @@ class PainterView extends ScalableView
         on-draw e
         $e
           ..mousemove on-draw
+      ..mousemove (e) ~>
+        {left: @x, top: @y} = $e.offset!
+        @x = e.pageX - @x
+        @y = e.pageY - @y
+        @x = ~~(@x / @scale)
+        @y = ~~(@y / @scale)
       ..mouseup ->
         $e.off \mousemove on-draw
   update: ->
     @index = DeusExMachina.index
     super!
+      ..fillStyle = string-from-rgb DeusExMachina.color
+      ..fillRect do
+        @x * @scale, @y * @scale
+        @scale, @scale
 
 class PreviewView extends ScalableView
   (data) ->

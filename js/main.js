@@ -188,18 +188,14 @@
     function PainterView(data){
       var onDraw, x$, $e, this$ = this;
       PainterView.superclass.call(this, data);
-      this.index = 1;
       this.scale = 17;
+      this.x = 0;
+      this.y = 0;
       onDraw = function(e){
-        var ref$, x, y, color, data, i;
-        ref$ = $e.offset(), x = ref$.left, y = ref$.top;
-        x = e.pageX - x;
-        y = e.pageY - y;
-        x = ~~(x / this$.scale);
-        y = ~~(y / this$.scale);
+        var color, data, i;
         color = DeusExMachina.color;
         data = DeusExMachina.spritesheet[this$.index].data;
-        i = ~~(y * this$.data.sprite.width + x);
+        i = ~~(this$.y * this$.data.sprite.width + this$.x);
         data[i * 4 + 0] = color[0];
         data[i * 4 + 1] = color[1];
         data[i * 4 + 2] = color[2];
@@ -213,13 +209,25 @@
         x$.mousemove(onDraw);
         return x$;
       });
+      x$.mousemove(function(e){
+        var ref$;
+        ref$ = $e.offset(), this$.x = ref$.left, this$.y = ref$.top;
+        this$.x = e.pageX - this$.x;
+        this$.y = e.pageY - this$.y;
+        this$.x = ~~(this$.x / this$.scale);
+        return this$.y = ~~(this$.y / this$.scale);
+      });
       x$.mouseup(function(){
         return $e.off('mousemove', onDraw);
       });
     }
     prototype.update = function(){
+      var x$;
       this.index = DeusExMachina.index;
-      return superclass.prototype.update.call(this);
+      x$ = superclass.prototype.update.call(this);
+      x$.fillStyle = stringFromRgb(DeusExMachina.color);
+      x$.fillRect(this.x * this.scale, this.y * this.scale, this.scale, this.scale);
+      return x$;
     };
     return PainterView;
   }(ScalableView));
