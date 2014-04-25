@@ -110,6 +110,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  cursor: pointer;
 }
 #container #painter {
   position: absolute;
