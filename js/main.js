@@ -741,6 +741,9 @@
     $('#previewer').append(preview.domElement);
     $('#colorpicker').append(colorpicker.domElement);
     $('#recentcolor').append(recentcolor.domElement);
+    $('#save').click(function(){
+      return Canvas2Image.saveAsPNG(spritesheet.domElement);
+    });
     views.push(spritesheet, selector, painter, preview, colorpicker, recentcolor);
     update = function(){
       var i$, ref$, len$, view;

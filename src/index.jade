@@ -8,12 +8,15 @@ html
   body
     #menu.ui.inverted.menu
       .item(href="https://github.com/caasi/hoehoekuma-painter") 人人有熊畫
-      a.item(href="http://hoekuma.tumblr.com/")
-        i.home.icon
-        | 主站
+      a#save.item
+        i.save.icon
+        | 存檔
       a.right.item(href="https://github.com/caasi/hoehoekuma-painter")
         i.github.icon
         | GitHub
+      a.right.item(href="http://hoekuma.tumblr.com/")
+        i.home.icon
+        | 吼吼熊愛味噌
     #container
       #selector
       #painter
@@ -22,8 +25,10 @@ html
       #recentcolor
       #footer.ui.inverted.segment
         p
-          | 這個工具是設計來畫吼吼熊用的，詳情請參考
+          | 這個工具是設計來畫吼吼熊用的，詳情請參考獨立遊戲開發者分享會發起的
           a(href="http://hoekuma.tumblr.com/post/83184799929") 人人有話說，人人有熊畫
           | 。
+    script(src="./js/nihilogic/base64.js")
+    script(src="./js/nihilogic/canvas2image.js")
     script(src="./js/vendor.js")
     script(src="./js/main.js")

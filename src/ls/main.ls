@@ -24,6 +24,8 @@ image-manager.load ->
   $ '#previewer'   .append preview.domElement
   $ '#colorpicker' .append colorpicker.domElement
   $ '#recentcolor' .append recentcolor.domElement
+  $ '#save' .click ->
+    Canvas2Image.saveAsPNG spritesheet.domElement
 
   views.push do
     spritesheet
