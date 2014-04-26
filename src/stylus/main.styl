@@ -8,13 +8,14 @@ s-height = 32px
 body
   background-color #ccc
 
-.ui.inverted.menu
+#menu.ui.inverted.menu
   margin-bottom 0
+  border-radius 0
 
 #container
   position relative
   width  23 * s-width
-  height 18 * s-height
+  //height 18 * s-height
   margin 0 auto
   #selector, #recentcolor
     cursor pointer
@@ -42,3 +43,15 @@ body
     position absolute
     top   12 * s-height
     right 0
+  #footer
+    position absolute
+    top 18 * s-height
+    width  23 * s-width
+    margin-top 0
+    border-top-left-radius  0
+    border-top-right-radius 0
+    a
+      color #ccc
+      text-decoration none
+      &:hover
+        text-decoration underline
