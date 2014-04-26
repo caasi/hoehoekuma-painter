@@ -205,7 +205,9 @@ class ColorpickerView extends View
         x = e.pageX - x - @ring-width
         y = e.pageY - y - @offset-y - @ring-width
         [s, v] = @hsv-triangle.SVFromPosition x, y
-        @color = h: @hsv-triangle.hue, s: s, v: v
+        # should not update HSV triangle
+        @_color <<< h: @hsv-triangle.hue, s: s, v: v
+        @_rgb-string = string-from-rgb rgb-from-hsv @_color.h, @_color.s, @_color.v
         @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc

@@ -640,11 +640,11 @@
           x = e.pageX - x - this$.ringWidth;
           y = e.pageY - y - this$.offsetY - this$.ringWidth;
           ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
-          this$.color = {
-            h: this$.hsvTriangle.hue,
-            s: s,
-            v: v
-          };
+          ref$ = this$._color;
+          ref$.h = this$.hsvTriangle.hue;
+          ref$.s = s;
+          ref$.v = v;
+          this$._rgbString = stringFromRgb(rgbFromHsv(this$._color.h, this$._color.s, this$._color.v));
           return this$.emit('color.changed', {
             h: this$.color.h,
             s: this$.color.s,
