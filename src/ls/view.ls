@@ -194,7 +194,9 @@ class RecentColor extends View
     i = 0
     while i < @colors.length
       c = @colors[i]
-      break if c.h is color.h and c.s is color.s and c.v is color.v
+      old-color = string-from-rgb rgb-from-hsv c.h, c.s, c.v
+      new-color = string-from-rgb rgb-from-hsv color.h, color.s, color.v
+      break if old-color is new-color
       ++i
     if i is @colors.length
       @colors.unshift color

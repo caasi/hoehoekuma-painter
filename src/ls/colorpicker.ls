@@ -103,7 +103,7 @@ class HSVTriangle extends Canvas
     v = t / 3 / @radius
     s = if s < 0 then 0 else if s >= 1 then 1 else s
     v = if v < 0 then 0 else if v >= 1 then 1 else v
-    [s, v]
+    {s: s, v: v}
   positionFromSV: (s, v) ->
     t0 = v * @radius
     t1 = s / 2 * t0
@@ -113,7 +113,7 @@ class HSVTriangle extends Canvas
     m = mat2d.create!
     m = mat2d.invert m, @matrix
     vec2.transformMat2d p, p, m
-    p
+    {x: p.0, y: p.1}
   paint: ->
     @domElement
       ..width = 2 * @radius
@@ -125,7 +125,7 @@ class HSVTriangle extends Canvas
       0, 0
       @domElement.width, @domElement.height
     for i from 0 til @domElement.width * @domElement.height
-      [s, v] = @SVFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
+      {s, v} = @SVFromPosition ~~(i % @domElement.width), ~~(i / @domElement.width)
       #continue unless 0 <= s < 1 and 0 <= v < 1
       rgb = rgb-from-hsv @hue, s, v
       image-data.data[i * 4 + 0] = rgb.0
@@ -204,10 +204,8 @@ class ColorpickerView extends View
         {left: x, top: y} = $canvas.offset!
         x = e.pageX - x - @ring-width
         y = e.pageY - y - @offset-y - @ring-width
-        [s, v] = @hsv-triangle.SVFromPosition x, y
-        # should not update HSV triangle
-        @_color <<< h: @hsv-triangle.hue, s: s, v: v
-        @_rgb-string = string-from-rgb rgb-from-hsv @_color.h, @_color.s, @_color.v
+        # trigger color setter
+        @color = @color <<< @hsv-triangle.SVFromPosition x, y
         @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc
@@ -235,19 +233,20 @@ class ColorpickerView extends View
       ..strokeStyle = \white
       ..lineWidth = @ring-width
       ..stroke!
-    [x, y] = @hsv-triangle.positionFromSV @color.s, @color.v
+    p = @hsv-triangle.positionFromSV @color.s, @color.v
     ctx
       ..beginPath!
-      ..arc x + @ring-width, y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2
+      ..arc p.x + @ring-width, p.y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2
       ..lineWidth = @ring-width / 10
       ..stroke!
   color:~
     -> @_color
     (color) ->
+      if @_color.h isnt color.h
+        @hsv-triangle
+          ..hue = color.h
+          ..rotation = @hue-ring.rotation + Math.toRadian color.h
+          ..dirty = true
       @_color <<< color
       @_rgb-string = string-from-rgb rgb-from-hsv @_color.h, @_color.s, @_color.v
-      @hsv-triangle
-        ..hue = @_color.h
-        ..rotation = @hue-ring.rotation + Math.toRadian @_color.h
-        ..dirty = true
 

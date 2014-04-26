@@ -351,11 +351,13 @@
       return results$;
     };
     prototype.addColor = function(color){
-      var i, c, i$, j, results$ = [];
+      var i, c, oldColor, newColor, i$, j, results$ = [];
       i = 0;
       while (i < this.colors.length) {
         c = this.colors[i];
-        if (c.h === color.h && c.s === color.s && c.v === color.v) {
+        oldColor = stringFromRgb(rgbFromHsv(c.h, c.s, c.v));
+        newColor = stringFromRgb(rgbFromHsv(color.h, color.s, color.v));
+        if (oldColor === newColor) {
           break;
         }
         ++i;
@@ -501,7 +503,10 @@
       v = v < 0
         ? 0
         : v >= 1 ? 1 : v;
-      return [s, v];
+      return {
+        s: s,
+        v: v
+      };
     };
     prototype.positionFromSV = function(s, v){
       var t0, t1, p, m;
@@ -512,7 +517,10 @@
       m = mat2d.create();
       m = mat2d.invert(m, this.matrix);
       vec2.transformMat2d(p, p, m);
-      return p;
+      return {
+        x: p[0],
+        y: p[1]
+      };
     };
     prototype.paint = function(){
       var x$, ctx, imageData, i$, to$, i, ref$, s, v, rgb, r, step, y$, z$;
@@ -525,7 +533,7 @@
       imageData = ctx.getImageData(0, 0, this.domElement.width, this.domElement.height);
       for (i$ = 0, to$ = this.domElement.width * this.domElement.height; i$ < to$; ++i$) {
         i = i$;
-        ref$ = this.SVFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$[0], v = ref$[1];
+        ref$ = this.SVFromPosition(~~(i % this.domElement.width), ~~(i / this.domElement.width)), s = ref$.s, v = ref$.v;
         rgb = rgbFromHsv(this.hue, s, v);
         imageData.data[i * 4 + 0] = rgb[0];
         imageData.data[i * 4 + 1] = rgb[1];
@@ -635,16 +643,11 @@
           }
         },
         mousemove: function(e){
-          var ref$, x, y, s, v;
+          var ref$, x, y;
           ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
           x = e.pageX - x - this$.ringWidth;
           y = e.pageY - y - this$.offsetY - this$.ringWidth;
-          ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
-          ref$ = this$._color;
-          ref$.h = this$.hsvTriangle.hue;
-          ref$.s = s;
-          ref$.v = v;
-          this$._rgbString = stringFromRgb(rgbFromHsv(this$._color.h, this$._color.s, this$._color.v));
+          this$.color = import$(this$.color, this$.hsvTriangle.SVFromPosition(x, y));
           return this$.emit('color.changed', {
             h: this$.color.h,
             s: this$.color.s,
@@ -664,7 +667,7 @@
       z$.mousedown(triangle.mousedown);
     }
     prototype.update = function(){
-      var x$, ctx, rad, gap, r, x, y, y$, ref$, z$;
+      var x$, ctx, rad, gap, r, x, y, y$, p, z$;
       if (this.hueRing.dirty) {
         this.hueRing.paint();
       }
@@ -687,10 +690,10 @@
       y$.strokeStyle = 'white';
       y$.lineWidth = this.ringWidth;
       y$.stroke();
-      ref$ = this.hsvTriangle.positionFromSV(this.color.s, this.color.v), x = ref$[0], y = ref$[1];
+      p = this.hsvTriangle.positionFromSV(this.color.s, this.color.v);
       z$ = ctx;
       z$.beginPath();
-      z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
+      z$.arc(p.x + this.ringWidth, p.y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
       z$.lineWidth = this.ringWidth / 10;
       z$.stroke();
       return z$;
@@ -701,12 +704,14 @@
       },
       set: function(color){
         var x$;
+        if (this._color.h !== color.h) {
+          x$ = this.hsvTriangle;
+          x$.hue = color.h;
+          x$.rotation = this.hueRing.rotation + Math.toRadian(color.h);
+          x$.dirty = true;
+        }
         import$(this._color, color);
         this._rgbString = stringFromRgb(rgbFromHsv(this._color.h, this._color.s, this._color.v));
-        x$ = this.hsvTriangle;
-        x$.hue = this._color.h;
-        x$.rotation = this.hueRing.rotation + Math.toRadian(this._color.h);
-        x$.dirty = true;
       },
       configurable: true,
       enumerable: true
