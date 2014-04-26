@@ -608,16 +608,11 @@
           x = e.pageX - x;
           y = e.pageY - y - this$.offsetY;
           hue = this$.hueRing.hueFromPosition(x, y);
-          this$.color = {
+          return this$.color = {
             h: hue,
             s: this$.color.s,
             v: this$.color.v
           };
-          return this$.emit('color.changed', {
-            h: this$.color.h,
-            s: this$.color.s,
-            v: this$.color.v
-          });
         },
         mouseup: function(){
           var x$;
@@ -647,12 +642,7 @@
           ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
           x = e.pageX - x - this$.ringWidth;
           y = e.pageY - y - this$.offsetY - this$.ringWidth;
-          this$.color = import$(this$.color, this$.hsvTriangle.SVFromPosition(x, y));
-          return this$.emit('color.changed', {
-            h: this$.color.h,
-            s: this$.color.s,
-            v: this$.color.v
-          });
+          return this$.color = import$(this$.color, this$.hsvTriangle.SVFromPosition(x, y));
         },
         mouseup: function(){
           var x$;
@@ -712,6 +702,11 @@
         }
         import$(this._color, color);
         this._rgbString = stringFromRgb(rgbFromHsv(this._color.h, this._color.s, this._color.v));
+        this.emit('color.changed', {
+          h: this.color.h,
+          s: this.color.s,
+          v: this.color.v
+        });
       },
       configurable: true,
       enumerable: true
@@ -738,7 +733,6 @@
     });
     z1$ = recentcolor = new RecentColor(data);
     z1$.on('color.changed', function(color){
-      painter.color = color;
       return colorpicker.color = color;
     });
     $('#selector').append(selector.domElement);

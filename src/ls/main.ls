@@ -16,7 +16,6 @@ image-manager.load ->
       painter.color = color
   recentcolor = new RecentColor data
     ..on 'color.changed' (color) ->
-      painter.color = color
       colorpicker.color = color
 
   $ '#selector'    .append selector.domElement

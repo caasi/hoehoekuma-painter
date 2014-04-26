@@ -184,7 +184,6 @@ class ColorpickerView extends View
         y = e.pageY - y - @offset-y
         hue = @hue-ring.hueFromPosition x, y
         @color = h: hue, s: @color.s, v: @color.v
-        @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
@@ -206,7 +205,6 @@ class ColorpickerView extends View
         y = e.pageY - y - @offset-y - @ring-width
         # trigger color setter
         @color = @color <<< @hsv-triangle.SVFromPosition x, y
-        @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -249,4 +247,5 @@ class ColorpickerView extends View
           ..dirty = true
       @_color <<< color
       @_rgb-string = string-from-rgb rgb-from-hsv @_color.h, @_color.s, @_color.v
+      @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
 
