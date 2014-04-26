@@ -96,21 +96,24 @@ body {
   margin-bottom: 0;
 }
 #container {
-  background-color: #fff;
   position: relative;
   width: 552px;
   height: 576px;
   margin: 0 auto;
+}
+#container #selector,
+#container #recentcolor {
+  cursor: pointer;
 }
 #container #painter,
 #container #colorpicker {
   cursor: crosshair;
 }
 #container #selector {
+  background-color: #fff;
   position: absolute;
   top: 0;
   left: 0;
-  cursor: pointer;
 }
 #container #painter {
   position: absolute;
@@ -125,5 +128,11 @@ body {
 #container #colorpicker {
   position: absolute;
   top: 192px;
+  right: 0;
+}
+#container #recentcolor {
+  background-color: #16161d;
+  position: absolute;
+  top: 384px;
   right: 0;
 }

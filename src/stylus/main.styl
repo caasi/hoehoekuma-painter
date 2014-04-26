@@ -2,7 +2,7 @@
 
 global-reset()
 
-s-width = 24px
+s-width  = 24px
 s-height = 32px
 
 body
@@ -12,27 +12,33 @@ body
   margin-bottom 0
 
 #container
-  background-color #fff
   position relative
   width  23 * s-width
   height 18 * s-height
   margin 0 auto
+  #selector, #recentcolor
+    cursor pointer
   #painter, #colorpicker
     cursor crosshair
   #selector
+    background-color white
     position absolute
-    top 0
+    top  0
     left 0
-    cursor pointer
   #painter
     position absolute
-    top s-height
+    top  s-height
     left 0
   #previewer
     position absolute
-    top 0
+    top   0
     right 0
   #colorpicker
     position absolute
-    top 6 * s-height
+    top   6 * s-height
+    right 0
+  #recentcolor
+    background-color #16161d
+    position absolute
+    top   12 * s-height
     right 0

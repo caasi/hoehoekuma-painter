@@ -1,5 +1,5 @@
 (function(){
-  var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SpriteSheet, SelectorView, ScalableView, PainterView, PreviewView, Canvas, HueRing, HSVTriangle, ColorpickerView;
+  var data, a, x$, rgbFromHsv, stringFromRgb, ImageLoader, imageManager, View, SpriteSheet, SelectorView, ScalableView, PainterView, PreviewView, RecentColor, Canvas, HueRing, HSVTriangle, ColorpickerView;
   data = {
     image: 'img/kuma.png',
     mask: 'img/mask.png',
@@ -144,14 +144,15 @@
       return results$;
     };
     prototype.paint = function(brush){
-      var mask, i, data;
+      var mask, i, color, data;
       mask = this.masksheet[brush.frame].data;
       i = ~~(brush.y * this.data.sprite.width + brush.x);
       if (mask[i * 4 + 3] !== 0x00) {
+        color = rgbFromHsv(brush.color.h, brush.color.s, brush.color.v);
         data = this.spritesheet[brush.frame].data;
-        data[i * 4 + 0] = brush.color[0];
-        data[i * 4 + 1] = brush.color[1];
-        data[i * 4 + 2] = brush.color[2];
+        data[i * 4 + 0] = color[0];
+        data[i * 4 + 1] = color[1];
+        data[i * 4 + 2] = color[2];
         return data[i * 4 + 3] = 0xff;
       }
     };
@@ -233,7 +234,11 @@
       this.scaleChanged = true;
       this.x = -1;
       this.y = -1;
-      this.color = [0xff, 0xff, 0xff];
+      this.color = {
+        h: 0,
+        s: 0,
+        v: 1
+      };
       onDraw = function(e){
         return this$.emit('painted', {
           frame: this$.index,
@@ -262,7 +267,7 @@
     prototype.update = function(){
       var x$;
       x$ = superclass.prototype.update.call(this);
-      x$.fillStyle = stringFromRgb(this.color);
+      x$.fillStyle = stringFromRgb(rgbFromHsv(this.color.h, this.color.s, this.color.v));
       x$.fillRect(this.x * this.scale, this.y * this.scale, this.scale, this.scale);
       return x$;
     };
@@ -297,6 +302,80 @@
     };
     return PreviewView;
   }(ScalableView));
+  RecentColor = (function(superclass){
+    var prototype = extend$((import$(RecentColor, superclass).displayName = 'RecentColor', RecentColor), superclass).prototype, constructor = RecentColor;
+    function RecentColor(data, source){
+      var x$, y$, $canvas, this$ = this;
+      RecentColor.superclass.call(this, data, source);
+      this.colors = [];
+      x$ = this.domElement;
+      x$.width = this.data.sprite.width * 6;
+      x$.height = this.data.sprite.height * 6;
+      this.widget = {
+        width: 3,
+        height: 8
+      };
+      this.cell = {
+        width: this.domElement.width / this.widget.width,
+        height: this.domElement.height / this.widget.height
+      };
+      y$ = $canvas = $(this.domElement);
+      y$.click(function(e){
+        var ref$, x, y, i;
+        ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
+        x = e.pageX - x;
+        y = e.pageY - y;
+        x = ~~(x / this$.cell.width);
+        y = ~~(y / this$.cell.height);
+        i = y * this$.widget.width + x;
+        if (i < this$.colors.length) {
+          return this$.emit('color.changed', this$.colors[i]);
+        }
+      });
+    }
+    prototype.update = function(){
+      var ctx, i$, to$, i, x, y, c, x$, results$ = [];
+      ctx = superclass.prototype.update.call(this);
+      for (i$ = 0, to$ = this.widget.width * this.widget.height; i$ < to$; ++i$) {
+        i = i$;
+        if (i < this.colors.length) {
+          x = ~~(i % 3);
+          y = ~~(i / 3);
+          c = this.colors[i];
+          x$ = ctx;
+          x$.fillStyle = stringFromRgb(rgbFromHsv(c.h, c.s, c.v));
+          x$.fillRect(x * this.cell.width, y * this.cell.height, this.cell.width, this.cell.height);
+          results$.push(x$);
+        }
+      }
+      return results$;
+    };
+    prototype.addColor = function(color){
+      var i, c, i$, j, results$ = [];
+      i = 0;
+      while (i < this.colors.length) {
+        c = this.colors[i];
+        if (c.h === color.h && c.s === color.s && c.v === color.v) {
+          break;
+        }
+        ++i;
+      }
+      if (i === this.colors.length) {
+        this.colors.unshift(color);
+        while (this.colors.length >= 16) {
+          results$.push(this.colors.pop());
+        }
+        return results$;
+      } else {
+        for (i$ = i; i$ > 0; --i$) {
+          j = i$;
+          this.colors[j] = this.colors[j - 1];
+        }
+        return this.colors[0] = color;
+      }
+    };
+    return RecentColor;
+  }(View));
   Canvas = (function(){
     Canvas.displayName = 'Canvas';
     var prototype = Canvas.prototype, constructor = Canvas;
@@ -494,11 +573,12 @@
       y$.width = this.data.sprite.width * 6;
       y$.height = this.data.sprite.height * 6;
       this.offsetY = (this.domElement.height - this.domElement.width) / 2;
-      this.prev = {
+      this._color = {
+        h: 0,
         s: 0,
         v: 1
       };
-      this.color = [0xff, 0xff, 0xff];
+      this.color = this._color;
       $doc = $(document);
       ring = {
         mousedown: function(e){
@@ -515,17 +595,21 @@
           }
         },
         mousemove: function(e){
-          var ref$, x, y, hue, x$;
+          var ref$, x, y, hue;
           ref$ = $canvas.offset(), x = ref$.left, y = ref$.top;
           x = e.pageX - x;
           y = e.pageY - y - this$.offsetY;
           hue = this$.hueRing.hueFromPosition(x, y);
-          x$ = this$.hsvTriangle = new HSVTriangle(this$.radius.inner);
-          x$.hue = hue;
-          x$.rotation = this$.hueRing.rotation + Math.toRadian(hue);
-          x$.dirty = true;
-          this$.color = rgbFromHsv(hue, this$.prev.s, this$.prev.v);
-          return this$.emit('color.changed', this$.color);
+          this$.color = {
+            h: hue,
+            s: this$.color.s,
+            v: this$.color.v
+          };
+          return this$.emit('color.changed', {
+            h: this$.color.h,
+            s: this$.color.s,
+            v: this$.color.v
+          });
         },
         mouseup: function(){
           var x$;
@@ -556,11 +640,16 @@
           x = e.pageX - x - this$.ringWidth;
           y = e.pageY - y - this$.offsetY - this$.ringWidth;
           ref$ = this$.hsvTriangle.SVFromPosition(x, y), s = ref$[0], v = ref$[1];
-          ref$ = this$.prev;
-          ref$.s = s;
-          ref$.v = v;
-          this$.color = rgbFromHsv(this$.hsvTriangle.hue, s, v);
-          return this$.emit('color.changed', this$.color);
+          this$.color = {
+            h: this$.hsvTriangle.hue,
+            s: s,
+            v: v
+          };
+          return this$.emit('color.changed', {
+            h: this$.color.h,
+            s: this$.color.s,
+            v: this$.color.v
+          });
         },
         mouseup: function(){
           var x$;
@@ -583,7 +672,7 @@
         this.hsvTriangle.paint();
       }
       x$ = ctx = superclass.prototype.update.call(this);
-      x$.fillStyle = stringFromRgb(this.color);
+      x$.fillStyle = this._rgbString;
       x$.fillRect(0, 0, this.domElement.width, this.domElement.height);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
       x$.drawImage(this.hsvTriangle.domElement, this.ringWidth, this.ringWidth + this.offsetY);
@@ -598,7 +687,7 @@
       y$.strokeStyle = 'white';
       y$.lineWidth = this.ringWidth;
       y$.stroke();
-      ref$ = this.hsvTriangle.positionFromSV(this.prev.s, this.prev.v), x = ref$[0], y = ref$[1];
+      ref$ = this.hsvTriangle.positionFromSV(this.color.s, this.color.v), x = ref$[0], y = ref$[1];
       z$ = ctx;
       z$.beginPath();
       z$.arc(x + this.ringWidth, y + this.offsetY + this.ringWidth, this.ringWidth / 4, 0, Math.PI * 2);
@@ -606,10 +695,26 @@
       z$.stroke();
       return z$;
     };
+    Object.defineProperty(prototype, 'color', {
+      get: function(){
+        return this._color;
+      },
+      set: function(color){
+        var x$;
+        import$(this._color, color);
+        this._rgbString = stringFromRgb(rgbFromHsv(this._color.h, this._color.s, this._color.v));
+        x$ = this.hsvTriangle;
+        x$.hue = this._color.h;
+        x$.rotation = this.hueRing.rotation + Math.toRadian(this._color.h);
+        x$.dirty = true;
+      },
+      configurable: true,
+      enumerable: true
+    });
     return ColorpickerView;
   }(View));
   imageManager.load(function(){
-    var views, spritesheet, x$, selector, y$, painter, preview, z$, colorpicker, update;
+    var views, spritesheet, x$, selector, y$, painter, preview, z$, colorpicker, z1$, recentcolor, update;
     views = [];
     spritesheet = new SpriteSheet(data);
     x$ = selector = new SelectorView(data, spritesheet.domElement);
@@ -618,18 +723,25 @@
     });
     y$ = painter = new PainterView(data, spritesheet.domElement);
     y$.on('painted', function(data){
-      return spritesheet.paint(data);
+      spritesheet.paint(data);
+      return recentcolor.addColor(data.color);
     });
     preview = new PreviewView(data, spritesheet.domElement);
     z$ = colorpicker = new ColorpickerView(data);
     z$.on('color.changed', function(color){
       return painter.color = color;
     });
+    z1$ = recentcolor = new RecentColor(data);
+    z1$.on('color.changed', function(color){
+      painter.color = color;
+      return colorpicker.color = color;
+    });
     $('#selector').append(selector.domElement);
     $('#painter').append(painter.domElement);
     $('#previewer').append(preview.domElement);
     $('#colorpicker').append(colorpicker.domElement);
-    views.push(spritesheet, selector, painter, preview, colorpicker);
+    $('#recentcolor').append(recentcolor.domElement);
+    views.push(spritesheet, selector, painter, preview, colorpicker, recentcolor);
     update = function(){
       var i$, ref$, len$, view;
       for (i$ = 0, len$ = (ref$ = views).length; i$ < len$; ++i$) {

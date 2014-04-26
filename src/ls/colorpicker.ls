@@ -164,10 +164,8 @@ class ColorpickerView extends View
       ..width = @data.sprite.width * 6
       ..height = @data.sprite.height * 6
     @offset-y = (@domElement.height - @domElement.width) / 2
-    @prev =
-      s: 0
-      v: 1
-    @color = [0xff 0xff 0xff]
+    @_color = h: 0, s: 0, v: 1
+    @color = @_color
     # interaction
     $doc = $ document
     ring =
@@ -185,12 +183,8 @@ class ColorpickerView extends View
         x = e.pageX - x
         y = e.pageY - y - @offset-y
         hue = @hue-ring.hueFromPosition x, y
-        @hsv-triangle = new HSVTriangle @radius.inner
-          ..hue = hue
-          ..rotation = @hue-ring.rotation + Math.toRadian hue
-          ..dirty = true
-        @color = rgb-from-hsv hue, @prev.s, @prev.v
-        @emit 'color.changed' @color
+        @color = h: hue, s: @color.s, v: @color.v
+        @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc
           ..off \mousemove ring.mousemove
@@ -211,9 +205,8 @@ class ColorpickerView extends View
         x = e.pageX - x - @ring-width
         y = e.pageY - y - @offset-y - @ring-width
         [s, v] = @hsv-triangle.SVFromPosition x, y
-        @prev <<< {s, v}
-        @color = rgb-from-hsv @hsv-triangle.hue, s, v
-        @emit 'color.changed' @color
+        @color = h: @hsv-triangle.hue, s: s, v: v
+        @emit 'color.changed' h: @color.h, s: @color.s, v: @color.v
       mouseup: ~>
         $doc
           ..off \mousemove triangle.mousemove
@@ -225,7 +218,7 @@ class ColorpickerView extends View
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
     ctx = super!
-      ..fillStyle = string-from-rgb @color
+      ..fillStyle = @_rgb-string
       ..fillRect 0, 0, @domElement.width, @domElement.height
       ..drawImage @hue-ring.domElement, 0, @offset-y
       ..drawImage @hsv-triangle.domElement, @ring-width, @ring-width + @offset-y
@@ -240,10 +233,19 @@ class ColorpickerView extends View
       ..strokeStyle = \white
       ..lineWidth = @ring-width
       ..stroke!
-    [x, y] = @hsv-triangle.positionFromSV @prev.s, @prev.v
+    [x, y] = @hsv-triangle.positionFromSV @color.s, @color.v
     ctx
       ..beginPath!
       ..arc x + @ring-width, y + @offset-y + @ring-width, @ring-width / 4, 0, Math.PI * 2
       ..lineWidth = @ring-width / 10
       ..stroke!
+  color:~
+    -> @_color
+    (color) ->
+      @_color <<< color
+      @_rgb-string = string-from-rgb rgb-from-hsv @_color.h, @_color.s, @_color.v
+      @hsv-triangle
+        ..hue = @_color.h
+        ..rotation = @hue-ring.rotation + Math.toRadian @_color.h
+        ..dirty = true
 
