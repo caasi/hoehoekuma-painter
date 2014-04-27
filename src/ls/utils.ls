@@ -8,19 +8,26 @@ Math
 # RGB from HSV
 # http://aventures-logicielles.blogspot.tw/2010/11/playing-with-hsv-colors-and-html5.html
 rgb-from-hsv = (h, s, v) ->
-  h = (h + 360) % 360
-  c = v * s
-  h /= 60
-  x = c * (1 - Math.abs((h % 2) - 1))
-  m = v - c
-  rgb = switch
-  | h <  1 => [c, x, 0]
-  | h <  2 => [x, c, 0]
-  | h <  3 => [0, c, x]
-  | h <  4 => [0, x, c]
-  | h <  5 => [x, 0, c]
-  | h <= 6 => [c, 0, x]
-  for v in rgb => ~~(0xff * (v + m))
+  if s is 0
+    rgb = [v, v, v]
+  else
+    h = (h + 360) % 360
+    c = v * s
+    h /= 60
+    i = ~~h
+    f = h - i
+    p = v * (1 - s)
+    q = v * (1 - s * f)
+    t = v * (1 - s * (1 - f))
+    # use rgb = switch i ... will create a new function
+    switch i
+    | 0 => rgb = [v, t, p]
+    | 1 => rgb = [q, v, p]
+    | 2 => rgb = [p, v, t]
+    | 3 => rgb = [p, q, v]
+    | 4 => rgb = [t, p, v]
+    | 5 => rgb = [v, p, q]
+  [~~(0xff * rgb.0), ~~(0xff * rgb.1), ~~(0xff * rgb.2)]
 
 string-from-rgb = -> "rgb(#{it.0},#{it.1},#{it.2})"
 

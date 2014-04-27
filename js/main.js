@@ -22,33 +22,39 @@
     return it / a;
   };
   rgbFromHsv = function(h, s, v){
-    var c, x, m, rgb, i$, len$, results$ = [];
-    h = (h + 360) % 360;
-    c = v * s;
-    h /= 60;
-    x = c * (1 - Math.abs(h % 2 - 1));
-    m = v - c;
-    rgb = (function(){
-      switch (false) {
-      case !(h < 1):
-        return [c, x, 0];
-      case !(h < 2):
-        return [x, c, 0];
-      case !(h < 3):
-        return [0, c, x];
-      case !(h < 4):
-        return [0, x, c];
-      case !(h < 5):
-        return [x, 0, c];
-      case !(h <= 6):
-        return [c, 0, x];
+    var rgb, c, i, f, p, q, t;
+    if (s === 0) {
+      rgb = [v, v, v];
+    } else {
+      h = (h + 360) % 360;
+      c = v * s;
+      h /= 60;
+      i = ~~h;
+      f = h - i;
+      p = v * (1 - s);
+      q = v * (1 - s * f);
+      t = v * (1 - s * (1 - f));
+      switch (i) {
+      case 0:
+        rgb = [v, t, p];
+        break;
+      case 1:
+        rgb = [q, v, p];
+        break;
+      case 2:
+        rgb = [p, v, t];
+        break;
+      case 3:
+        rgb = [p, q, v];
+        break;
+      case 4:
+        rgb = [t, p, v];
+        break;
+      case 5:
+        rgb = [v, p, q];
       }
-    }());
-    for (i$ = 0, len$ = rgb.length; i$ < len$; ++i$) {
-      v = rgb[i$];
-      results$.push(~~(0xff * (v + m)));
     }
-    return results$;
+    return [~~(0xff * rgb[0]), ~~(0xff * rgb[1]), ~~(0xff * rgb[2])];
   };
   stringFromRgb = function(it){
     return "rgb(" + it[0] + "," + it[1] + "," + it[2] + ")";
