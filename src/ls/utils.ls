@@ -6,7 +6,7 @@ Math
 
 ##
 # RGB from HSV
-# http://aventures-logicielles.blogspot.tw/2010/11/playing-with-hsv-colors-and-html5.html
+# http://www.cs.rit.edu/~ncs/color/t_convert.html
 rgb-from-hsv = (h, s, v) ->
   if s is 0
     rgb = [v, v, v]
