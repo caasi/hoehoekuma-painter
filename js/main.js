@@ -95,7 +95,7 @@
       this.source = source;
       this.domElement = document.createElement('canvas');
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var x$;
       x$ = this.domElement.getContext('2d');
       x$.mozImageSmoothingEnabled = false;
@@ -140,9 +140,9 @@
         }
       }
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var ctx, i, ref$, relation, results$ = [];
-      ctx = superclass.prototype.update.call(this);
+      ctx = superclass.prototype.update.call(this, time);
       for (i in ref$ = this.data.relations) {
         relation = ref$[i];
         results$.push(ctx.putImageData(this.spritesheet[i], +i * this.data.sprite.width, 0));
@@ -181,9 +181,9 @@
         return this$.emit('index.changed', this$.index);
       });
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var x$;
-      x$ = superclass.prototype.update.call(this);
+      x$ = superclass.prototype.update.call(this, time);
       x$.drawImage(this.source, 0, 0);
       x$.globalCompositeOperation = 'destination-over';
       x$.fillStyle = '#0f0';
@@ -201,7 +201,7 @@
       this.scaleChanged = false;
       this.bgElement = document.createElement('canvas');
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var x$, ctx, width, i$, to$, y, j$, to1$, x, color, y$, z$, z1$;
       if (this.scaleChanged) {
         this.scaleChanged = false;
@@ -224,7 +224,7 @@
       z$ = this.domElement;
       z$.width = this.data.sprite.width * this.scale;
       z$.height = this.data.sprite.height * this.scale;
-      z1$ = superclass.prototype.update.call(this);
+      z1$ = superclass.prototype.update.call(this, time);
       z1$.drawImage(this.bgElement, 0, 0);
       z1$.drawImage(this.source, this.index * this.data.sprite.width, 0, this.data.sprite.width, this.data.sprite.height, 0, 0, this.data.sprite.width * this.scale, this.data.sprite.height * this.scale);
       return z1$;
@@ -270,9 +270,9 @@
         return this$.y = ~~(this$.y / this$.scale);
       });
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var x$;
-      x$ = superclass.prototype.update.call(this);
+      x$ = superclass.prototype.update.call(this, time);
       x$.fillStyle = stringFromRgb(rgbFromHsv(this.color.h, this.color.s, this.color.v));
       x$.fillRect(this.x * this.scale, this.y * this.scale, this.scale, this.scale);
       return x$;
@@ -288,6 +288,8 @@
       this.scaleChanged = true;
       this.animation = 0;
       this.frame = 0;
+      this.timeLast = 0;
+      this.timeStep = 1000 / 60;
       setInterval(function(){
         ++this$.animation;
         if (!(this$.animation < this$.data.animations.length)) {
@@ -296,15 +298,14 @@
         return this$.frame = 0;
       }, this.data.duration * 1000);
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var animation;
       animation = this.data.animations[this.animation];
+      this.frame += (time - this.timeLast) / this.timeStep * this.data.speed;
+      this.frame %= animation.length;
       this.index = animation[~~this.frame];
-      this.frame += this.data.speed;
-      if (!(this.frame < animation.length)) {
-        this.frame = 0;
-      }
-      return superclass.prototype.update.call(this);
+      this.timeLast = time;
+      return superclass.prototype.update.call(this, time);
     };
     return PreviewView;
   }(ScalableView));
@@ -339,7 +340,7 @@
         }
       });
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var ctx, i$, to$, i, x, y, c, x$, results$ = [];
       ctx = superclass.prototype.update.call(this);
       for (i$ = 0, to$ = this.widget.width * this.widget.height; i$ < to$; ++i$) {
@@ -662,7 +663,7 @@
       z$.mousedown(ring.mousedown);
       z$.mousedown(triangle.mousedown);
     }
-    prototype.update = function(){
+    prototype.update = function(time){
       var x$, ctx, rad, gap, r, x, y, y$, p, z$;
       if (this.hueRing.dirty) {
         this.hueRing.paint();
@@ -670,7 +671,7 @@
       if (this.hsvTriangle.dirty) {
         this.hsvTriangle.paint();
       }
-      x$ = ctx = superclass.prototype.update.call(this);
+      x$ = ctx = superclass.prototype.update.call(this, time);
       x$.fillStyle = this._rgbString;
       x$.fillRect(0, 0, this.domElement.width, this.domElement.height);
       x$.drawImage(this.hueRing.domElement, 0, this.offsetY);
@@ -750,11 +751,11 @@
       return Canvas2Image.saveAsPNG(spritesheet.domElement);
     });
     views.push(spritesheet, selector, painter, preview, colorpicker, recentcolor);
-    update = function(){
+    update = function(time){
       var i$, ref$, len$, view;
       for (i$ = 0, len$ = (ref$ = views).length; i$ < len$; ++i$) {
         view = ref$[i$];
-        view.update();
+        view.update(time);
       }
       return requestAnimationFrame(update);
     };

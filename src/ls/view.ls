@@ -1,7 +1,7 @@
 class View extends Monologue
   (@data, @source) ->
     @domElement = document.createElement \canvas
-  update: ->
+  update: (time) ->
     @domElement.getContext \2d
       ..mozImageSmoothingEnabled    = false
       ..webkitImageSmoothingEnabled = false
@@ -40,8 +40,8 @@ class SpriteSheet extends View
       else
         @spritesheet[i] = @spritesheet[relation]
         @masksheet[i]   = @masksheet[relation]
-  update: ->
-    ctx = super!
+  update: (time) ->
+    ctx = super time
     for i, relation of @data.relations
       ctx.putImageData @spritesheet[i], +i * @data.sprite.width, 0
   paint: (brush) ->
@@ -67,8 +67,8 @@ class SelectorView extends View
         {left: x} = $e.offset!
         @index = ~~((e.pageX - x) / @data.sprite.width)
         @emit 'index.changed' @index
-  update: ->
-    super!
+  update: (time) ->
+    super time
       ..drawImage @source, 0, 0
       ..globalCompositeOperation = \destination-over
       ..fillStyle = \#0f0
@@ -83,7 +83,7 @@ class ScalableView extends View
     @scale = 1
     @scale-changed = false
     @bgElement = document.createElement \canvas
-  update: ->
+  update: (time)->
     if @scale-changed then
       @scale-changed = false
       @bgElement
@@ -100,7 +100,7 @@ class ScalableView extends View
     @domElement
       ..width  = @data.sprite.width  * @scale
       ..height = @data.sprite.height * @scale
-    super!
+    super time
       ..drawImage @bgElement, 0, 0
       ..drawImage do
         @source
@@ -130,8 +130,8 @@ class PainterView extends ScalableView
       @y = e.pageY - @y
       @x = ~~(@x / @scale)
       @y = ~~(@y / @scale)
-  update: ->
-    super!
+  update: (time) ->
+    super time
       ..fillStyle = string-from-rgb rgb-from-hsv @color.h, @color.s, @color.v
       ..fillRect do
         @x * @scale, @y * @scale
@@ -144,19 +144,21 @@ class PreviewView extends ScalableView
     @scale-changed = true
     @animation = 0
     @frame = 0
+    @time-last = 0
+    @time-step = 1000 / 60
     setInterval ~>
       ++@animation
       unless @animation < @data.animations.length
         @animation = 0
       @frame = 0
     , @data.duration * 1000
-  update: ->
+  update: (time) ->
     animation = @data.animations[@animation]
+    @frame += (time - @time-last) / @time-step * @data.speed
+    @frame %= animation.length
     @index = animation[~~@frame]
-    @frame += @data.speed
-    unless @frame < animation.length
-      @frame = 0
-    super!
+    @time-last = time
+    super time
 
 class RecentColor extends View
   (data, source) ->
@@ -181,7 +183,7 @@ class RecentColor extends View
         i = y * @widget.width + x
         if i < @colors.length
           @emit 'color.changed' @colors[i]
-  update: ->
+  update: (time) ->
     ctx = super!
     for i from 0 til @widget.width * @widget.height when i < @colors.length
       x = ~~(i % 3)

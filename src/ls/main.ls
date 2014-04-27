@@ -33,8 +33,8 @@ image-manager.load ->
     preview
     colorpicker
     recentcolor
-  update = ->
+  update = (time) ->
     for view in views
-      view.update!
+      view.update time
     requestAnimationFrame update
   requestAnimationFrame update

@@ -212,10 +212,10 @@ class ColorpickerView extends View
     $canvas = $(@domElement)
       ..mousedown ring.mousedown
       ..mousedown triangle.mousedown
-  update: ->
+  update: (time) ->
     @hue-ring.paint!     if @hue-ring.dirty
     @hsv-triangle.paint! if @hsv-triangle.dirty
-    ctx = super!
+    ctx = super time
       ..fillStyle = @_rgb-string
       ..fillRect 0, 0, @domElement.width, @domElement.height
       ..drawImage @hue-ring.domElement, 0, @offset-y
